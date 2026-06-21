@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import configure_logging, settings
-from app.api.routes import indexing, issues, testing, pr
+from app.api.routes import indexing, issues, testing, pr, github_issues
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ app.include_router(indexing.router)
 app.include_router(issues.router)
 app.include_router(testing.router)
 app.include_router(pr.router)
+app.include_router(github_issues.router)
 
 
 @app.get("/health", tags=["health"])
