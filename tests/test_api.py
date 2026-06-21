@@ -22,14 +22,14 @@ async def test_index_repository_missing_path(client):
     assert response.status_code == 400
 
 
-async def test_process_issue_missing_index(client):
+async def test_process_issue_invalid_github_url(client):
     response = await client.post("/process-issue", json={
         "title": "Test issue",
         "description": "Something is broken",
-        "repository_path": "/tmp/fake_repo",
+        "github_url": "https://github.com/nonexistent-owner-xyz/nonexistent-repo-xyz",
     })
-    # Should return 200 with an error field (workflow handles gracefully)
-    assert response.status_code in (200, 500)
+    # Clone will fail → 500
+    assert response.status_code == 500
 
 
 async def test_run_tests_bad_path(client):

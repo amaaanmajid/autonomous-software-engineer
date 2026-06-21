@@ -16,7 +16,7 @@ class IssueInput(BaseModel):
     description: str = Field(..., min_length=1)
     issue_number: Optional[int] = None
     labels: list[str] = Field(default_factory=list)
-    repository_path: str = Field(..., description="Absolute local path to the repository")
+    repository_path: str = Field(default="", description="Absolute local path to the repository (set automatically after cloning)")
 
 
 class IssueAnalysis(BaseModel):

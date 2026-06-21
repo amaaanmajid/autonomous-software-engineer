@@ -81,13 +81,28 @@ def build_graph() -> StateGraph:
     def retrieve_context(state: AgentState) -> AgentState:
         logger.info("[NODE] retrieve_context")
         try:
-            if not retrieval_agent:
-                logger.warning("No retrieval agent — skipping retrieval")
-                from app.models.retrieval import RetrievalResult
+            from app.models.retrieval import RetrievalResult
+            # Always reload from disk — picks up repos indexed after server start
+            current_symbol_index = None
+            try:
+                current_symbol_index = RepositoryIndexingAgent.load_symbol_index()
+            except FileNotFoundError:
+                pass
+
+            if current_symbol_index is None:
+                logger.warning("No symbol index — skipping retrieval")
                 return {**state, "retrieval": RetrievalResult(
                     query="", results=[], total_exact=0, total_semantic=0, merged_count=0
                 )}
-            result = retrieval_agent.retrieve(state["issue"], top_k=settings.retrieval_top_k)
+
+            current_faiss = FAISSStore(model_name=settings.embedding_model)
+            try:
+                current_faiss.load(settings.faiss_index_path)
+            except FileNotFoundError:
+                pass
+
+            agent = RetrievalAgent(current_symbol_index, current_faiss)
+            result = agent.retrieve(state["issue"], top_k=settings.retrieval_top_k)
             return {**state, "retrieval": result}
         except Exception as e:
             logger.error("retrieve_context failed: %s", e)
