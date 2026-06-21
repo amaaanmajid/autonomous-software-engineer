@@ -8,7 +8,7 @@ of the function/class — this source code is later embedded into FAISS.
 import logging
 from pathlib import Path
 
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Parser, Node
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
 import tree_sitter_typescript as tstypescript
@@ -34,6 +34,7 @@ SKIP_FILES = {"*.min.js", "*.lock"}
 
 
 def _build_languages() -> dict[str, Language]:
+    # tree-sitter 0.23.x: Language() takes the capsule object directly
     return {
         "python": Language(tspython.language()),
         "javascript": Language(tsjavascript.language()),
@@ -69,9 +70,8 @@ class TreeSitterParser:
         self._languages = _build_languages()
         self._parsers: dict[str, Parser] = {}
         for lang_name, language in self._languages.items():
-            p = Parser()
-            p.set_language(language)
-            self._parsers[lang_name] = p
+            # tree-sitter 0.23.x: Parser(language) constructor
+            self._parsers[lang_name] = Parser(language)
 
     def parse_file(self, file_path: Path) -> list[Symbol]:
         """Parse one source file and return all extracted symbols."""
@@ -111,12 +111,9 @@ class TreeSitterParser:
             logger.warning("Query build failed for %s: %s", lang, e)
             return []
 
+        # tree-sitter 0.23.x: captures() returns dict[str, list[Node]]
         captures = query.captures(tree.root_node)
-
-        # captures returns list of (node, capture_name) tuples
-        definitions = [
-            node for node, name in captures if name == "definition"
-        ]
+        definitions: list[Node] = captures.get("definition", [])
 
         seen_ranges: set[tuple[int, int]] = set()
         for node in definitions:
@@ -127,7 +124,7 @@ class TreeSitterParser:
                 continue
             seen_ranges.add((start_line, end_line))
 
-            name = self._get_node_name(node, captures)
+            name = self._get_node_name(node, captures.get("name", []))
             if not name:
                 name = f"anonymous_{start_line}"
 
@@ -150,11 +147,11 @@ class TreeSitterParser:
 
         return symbols
 
-    def _get_node_name(self, node, captures) -> str:
-        """Find the @name capture that belongs to this @definition node."""
-        for captured_node, capture_name in captures:
-            if capture_name == "name" and node.start_byte <= captured_node.start_byte < node.end_byte:
-                return captured_node.text.decode("utf-8", errors="replace")
+    def _get_node_name(self, node: Node, name_nodes: list) -> str:
+        """Find the @name capture node that falls inside this @definition node."""
+        for name_node in name_nodes:
+            if node.start_byte <= name_node.start_byte < node.end_byte:
+                return name_node.text.decode("utf-8", errors="replace")
         return ""
 
     def _infer_type(self, node, lang: str) -> SymbolType:
