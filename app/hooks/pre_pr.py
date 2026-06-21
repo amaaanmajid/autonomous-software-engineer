@@ -22,7 +22,7 @@ def pre_pr_hook(patch_set: PatchSet, test_result: TestResult, repository_path: s
     if not patch_set.branch_name:
         raise HookValidationError("No branch name on patch set. Cannot create PR.")
 
-    if not test_result.passed:
+    if not test_result.passed and not test_result.skipped:
         raise HookValidationError(
             f"Tests did not pass ({test_result.failed_tests} failures). PR creation blocked."
         )

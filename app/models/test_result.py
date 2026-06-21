@@ -9,3 +9,4 @@ class TestResult(BaseModel):
     total_tests: int = 0
     failed_tests: int = 0
     passed_tests: int = 0
+    skipped: bool = False  # True when no test files found — pipeline continues to PR

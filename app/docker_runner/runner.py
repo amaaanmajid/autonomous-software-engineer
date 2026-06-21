@@ -56,6 +56,18 @@ class DockerTestRunner:
                 duration_seconds=0.0,
             )
 
+        # Skip Docker entirely if the repo has no test files
+        test_files = list(repo_path.rglob("test_*.py")) + list(repo_path.rglob("*_test.py"))
+        if not test_files:
+            logger.info("No test files found in %s — skipping tests", repo_path)
+            return TestResult(
+                passed=True,
+                exit_code=0,
+                output="No test files found in repository — skipping tests.",
+                duration_seconds=0.0,
+                skipped=True,
+            )
+
         logger.info("Running tests in Docker for: %s", repo_path)
         start = time.time()
 
