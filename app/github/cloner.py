@@ -5,6 +5,7 @@ If the repo is already cloned, pulls latest instead of re-cloning.
 """
 import logging
 import re
+import shutil
 from pathlib import Path
 
 import git
@@ -36,17 +37,11 @@ class RepoCloner:
         repo_path = workspace / repo_name
 
         if repo_path.exists():
-            logger.info("Repo already cloned at %s — resetting and pulling latest", repo_path)
-            repo = git.Repo(repo_path)
-            # Reset any local changes (previous patches) and switch back to default branch
-            repo.git.reset("--hard")
-            repo.git.clean("-fd")
-            default_branch = repo.remotes.origin.refs[0].remote_head
-            repo.git.checkout(default_branch)
-            repo.remotes.origin.pull()
-        else:
-            logger.info("Cloning %s → %s", github_url, repo_path)
-            git.Repo.clone_from(github_url, repo_path)
+            logger.info("Removing existing clone at %s — re-cloning fresh", repo_path)
+            shutil.rmtree(repo_path)
+
+        logger.info("Cloning %s → %s", github_url, repo_path)
+        git.Repo.clone_from(github_url, repo_path)
 
         logger.info("Repo ready at %s", repo_path)
         return str(repo_path)
