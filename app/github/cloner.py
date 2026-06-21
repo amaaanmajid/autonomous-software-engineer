@@ -36,8 +36,13 @@ class RepoCloner:
         repo_path = workspace / repo_name
 
         if repo_path.exists():
-            logger.info("Repo already cloned at %s — pulling latest", repo_path)
+            logger.info("Repo already cloned at %s — resetting and pulling latest", repo_path)
             repo = git.Repo(repo_path)
+            # Reset any local changes (previous patches) and switch back to default branch
+            repo.git.reset("--hard")
+            repo.git.clean("-fd")
+            default_branch = repo.remotes.origin.refs[0].remote_head
+            repo.git.checkout(default_branch)
             repo.remotes.origin.pull()
         else:
             logger.info("Cloning %s → %s", github_url, repo_path)
