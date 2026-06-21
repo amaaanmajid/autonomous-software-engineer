@@ -23,9 +23,12 @@ def _tokenize_issue(text: str) -> set[str]:
     for match in _IDENTIFIER_RE.finditer(text):
         word = match.group(1)
         tokens.add(word.lower())
-        # Split camelCase: getUserEmail → {get, user, email}
+        # Split camelCase: registerUser → ["register", "User"]
         parts = _CAMEL_SPLIT_RE.split(word)
         tokens.update(p.lower() for p in parts if len(p) > 2)
+        # Also try snake_case join: ["register", "User"] → "register_user"
+        if len(parts) > 1:
+            tokens.add("_".join(p.lower() for p in parts))
         # Split snake_case: get_user_email → {get, user, email}
         tokens.update(p.lower() for p in word.split("_") if len(p) > 2)
     return tokens

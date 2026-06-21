@@ -4,6 +4,9 @@ Tree-sitter based source code parser.
 Walks a repository, parses Python/JS/TS files, and extracts functions
 and classes as Symbol objects. Each Symbol contains the full source code
 of the function/class — this source code is later embedded into FAISS.
+
+Uses manual AST walking instead of the Query API for compatibility
+across tree-sitter 0.23.x versions.
 """
 import logging
 from pathlib import Path
@@ -17,7 +20,6 @@ from app.models.symbol import Symbol, SymbolType
 
 logger = logging.getLogger(__name__)
 
-# Languages supported for parsing
 SUPPORTED_EXTENSIONS = {
     ".py": "python",
     ".js": "javascript",
@@ -25,16 +27,20 @@ SUPPORTED_EXTENSIONS = {
     ".tsx": "typescript",
 }
 
-# Files/dirs to skip during repo walk
 SKIP_DIRS = {
     ".git", "__pycache__", "node_modules", ".venv", "venv",
     "env", "dist", "build", ".mypy_cache", ".pytest_cache",
 }
-SKIP_FILES = {"*.min.js", "*.lock"}
+
+# Node types that represent a named callable/class per language
+_DEFINITION_TYPES: dict[str, set[str]] = {
+    "python": {"function_definition", "class_definition"},
+    "javascript": {"function_declaration", "class_declaration", "method_definition"},
+    "typescript": {"function_declaration", "class_declaration", "method_definition"},
+}
 
 
 def _build_languages() -> dict[str, Language]:
-    # tree-sitter 0.23.x: Language() takes the capsule object directly
     return {
         "python": Language(tspython.language()),
         "javascript": Language(tsjavascript.language()),
@@ -42,27 +48,20 @@ def _build_languages() -> dict[str, Language]:
     }
 
 
-# Queries to extract functions and classes per language
-_PY_QUERY = """
-(function_definition name: (identifier) @name) @definition
-(async_function_def name: (identifier) @name) @definition
-(class_definition name: (identifier) @name) @definition
-"""
+def _walk(node: Node, target_types: set[str]):
+    """Yield all descendant nodes whose type is in target_types."""
+    if node.type in target_types:
+        yield node
+    for child in node.children:
+        yield from _walk(child, target_types)
 
-_JS_QUERY = """
-(function_declaration name: (identifier) @name) @definition
-(class_declaration name: (identifier) @name) @definition
-(arrow_function) @definition
-(method_definition name: (property_identifier) @name) @definition
-"""
 
-_TS_QUERY = _JS_QUERY  # TypeScript grammar is a superset of JS for our purposes
-
-_QUERIES: dict[str, str] = {
-    "python": _PY_QUERY,
-    "javascript": _JS_QUERY,
-    "typescript": _TS_QUERY,
-}
+def _get_name(node: Node) -> str:
+    """Return the identifier name child of a definition node."""
+    for child in node.children:
+        if child.type in ("identifier", "property_identifier"):
+            return child.text.decode("utf-8", errors="replace")
+    return ""
 
 
 class TreeSitterParser:
@@ -70,11 +69,9 @@ class TreeSitterParser:
         self._languages = _build_languages()
         self._parsers: dict[str, Parser] = {}
         for lang_name, language in self._languages.items():
-            # tree-sitter 0.23.x: Parser(language) constructor
             self._parsers[lang_name] = Parser(language)
 
     def parse_file(self, file_path: Path) -> list[Symbol]:
-        """Parse one source file and return all extracted symbols."""
         ext = file_path.suffix.lower()
         lang = SUPPORTED_EXTENSIONS.get(ext)
         if lang is None:
@@ -86,89 +83,57 @@ class TreeSitterParser:
             logger.warning("Cannot read %s: %s", file_path, e)
             return []
 
-        parser = self._parsers[lang]
-        tree = parser.parse(source)
+        tree = self._parsers[lang].parse(source)
         source_str = source.decode("utf-8", errors="replace")
+        lines = source_str.splitlines()
 
-        return self._extract_symbols(tree, source_str, str(file_path), lang)
-
-    def _extract_symbols(
-        self,
-        tree,
-        source: str,
-        file_path: str,
-        lang: str,
-    ) -> list[Symbol]:
+        target_types = _DEFINITION_TYPES[lang]
         symbols: list[Symbol] = []
-        lines = source.splitlines()
+        seen: set[tuple[int, int]] = set()
 
-        language = self._languages[lang]
-        query_str = _QUERIES[lang]
-
-        try:
-            query = language.query(query_str)
-        except Exception as e:
-            logger.warning("Query build failed for %s: %s", lang, e)
-            return []
-
-        # tree-sitter 0.23.x: captures() returns dict[str, list[Node]]
-        captures = query.captures(tree.root_node)
-        definitions: list[Node] = captures.get("definition", [])
-
-        seen_ranges: set[tuple[int, int]] = set()
-        for node in definitions:
-            start_line = node.start_point[0] + 1  # 1-indexed
+        for node in _walk(tree.root_node, target_types):
+            start_line = node.start_point[0] + 1
             end_line = node.end_point[0] + 1
 
-            if (start_line, end_line) in seen_ranges:
+            if (start_line, end_line) in seen:
                 continue
-            seen_ranges.add((start_line, end_line))
+            seen.add((start_line, end_line))
 
-            name = self._get_node_name(node, captures.get("name", []))
+            name = _get_name(node)
             if not name:
                 name = f"anonymous_{start_line}"
 
-            symbol_code = "\n".join(lines[start_line - 1 : end_line])
-            symbol_type = self._infer_type(node, lang)
-            docstring = self._extract_docstring(symbol_code, lang)
+            source_code = "\n".join(lines[start_line - 1: end_line])
+            symbol_type = self._infer_type(node)
+            docstring = self._extract_docstring(source_code, lang)
 
-            symbols.append(
-                Symbol(
-                    name=name,
-                    symbol_type=symbol_type,
-                    file_path=file_path,
-                    start_line=start_line,
-                    end_line=end_line,
-                    source_code=symbol_code,
-                    language=lang,
-                    docstring=docstring,
-                )
-            )
+            symbols.append(Symbol(
+                name=name,
+                symbol_type=symbol_type,
+                file_path=str(file_path),
+                start_line=start_line,
+                end_line=end_line,
+                source_code=source_code,
+                language=lang,
+                docstring=docstring,
+            ))
 
         return symbols
 
-    def _get_node_name(self, node: Node, name_nodes: list) -> str:
-        """Find the @name capture node that falls inside this @definition node."""
-        for name_node in name_nodes:
-            if node.start_byte <= name_node.start_byte < node.end_byte:
-                return name_node.text.decode("utf-8", errors="replace")
-        return ""
-
-    def _infer_type(self, node, lang: str) -> SymbolType:
-        ntype = node.type
-        if "class" in ntype:
+    def _infer_type(self, node: Node) -> SymbolType:
+        if "class" in node.type:
             return SymbolType.CLASS
-        if "async" in ntype:
-            return SymbolType.ASYNC_FUNCTION
-        if "method" in ntype:
+        if "method" in node.type:
             return SymbolType.METHOD
+        # async functions have "async" as first named child
+        if node.children and node.children[0].type == "async":
+            return SymbolType.ASYNC_FUNCTION
         return SymbolType.FUNCTION
 
     def _extract_docstring(self, source_code: str, lang: str) -> str | None:
         if lang != "python":
             return None
         lines = source_code.strip().splitlines()
-        # Look for triple-quoted string on first non-def line
         in_doc = False
         doc_lines: list[str] = []
         for line in lines[1:]:
@@ -185,7 +150,6 @@ class TreeSitterParser:
         return "\n".join(doc_lines) if doc_lines else None
 
     def scan_repository(self, repo_path: Path) -> list[Symbol]:
-        """Recursively scan an entire repository and return all symbols."""
         all_symbols: list[Symbol] = []
         scanned_files = 0
 
@@ -197,14 +161,8 @@ class TreeSitterParser:
             if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
                 continue
 
-            symbols = self.parse_file(file_path)
-            all_symbols.extend(symbols)
+            all_symbols.extend(self.parse_file(file_path))
             scanned_files += 1
 
-        logger.info(
-            "Scanned %d files, extracted %d symbols from %s",
-            scanned_files,
-            len(all_symbols),
-            repo_path,
-        )
+        logger.info("Scanned %d files, %d symbols from %s", scanned_files, len(all_symbols), repo_path)
         return all_symbols

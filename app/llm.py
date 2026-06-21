@@ -28,7 +28,10 @@ def get_llm() -> BaseChatModel:
         except Exception as e:
             logger.warning("Gemini init failed: %s — falling back to Ollama", e)
 
-    from langchain_community.chat_models import ChatOllama
+    try:
+        from langchain_ollama import ChatOllama
+    except ImportError:
+        from langchain_community.chat_models.ollama import ChatOllama  # type: ignore[no-redef]
     logger.info("Using Ollama model: %s", settings.ollama_model)
     return ChatOllama(
         base_url=settings.ollama_base_url,
