@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -13,7 +12,7 @@ class PatchOperation(str, Enum):
 class FilePatch(BaseModel):
     file_path: str
     operation: PatchOperation
-    original_code: Optional[str] = None  # None for INSERT operations
+    original_code: str | None = None  # None for INSERT operations
     new_code: str
     start_line: int
     end_line: int
@@ -25,5 +24,5 @@ class PatchSet(BaseModel):
     total_files: int
     description: str
     applied: bool = False
-    applied_at: Optional[str] = None
-    branch_name: Optional[str] = None
+    applied_at: str | None = None
+    branch_name: str | None = None

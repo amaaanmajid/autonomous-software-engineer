@@ -8,7 +8,6 @@ bridge from a FAISS result (slot number) back to the actual Symbol object.
 Embedding model: all-MiniLM-L6-v2 (free, local, 384-dim vectors)
 FAISS index type: IndexFlatIP (inner product / cosine similarity)
 """
-import json
 import logging
 import pickle
 from pathlib import Path
@@ -17,8 +16,8 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from app.models.symbol import Symbol
 from app.models.retrieval import RetrievedContext
+from app.models.symbol import Symbol
 
 logger = logging.getLogger(__name__)
 

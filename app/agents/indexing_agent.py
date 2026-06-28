@@ -10,7 +10,7 @@ Responsibilities:
 """
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
@@ -58,7 +58,7 @@ class RepositoryIndexingAgent:
         symbol_index = SymbolIndex(
             symbols=symbols,
             repository_path=str(repo_path.resolve()),
-            indexed_at=datetime.now(timezone.utc).isoformat(),
+            indexed_at=datetime.now(UTC).isoformat(),
             total_files=len({s.file_path for s in symbols}),
             total_symbols=len(symbols),
         )

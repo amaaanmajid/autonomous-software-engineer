@@ -1,6 +1,5 @@
 """Pre-PR hook: verify repo is clean, tests passed, patch was applied."""
 import logging
-from pathlib import Path
 
 import git
 

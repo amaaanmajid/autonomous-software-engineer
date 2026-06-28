@@ -7,8 +7,8 @@ directly in the symbol index by name. Fast, zero-cost, no embeddings needed.
 import logging
 import re
 
-from app.models.symbol import SymbolIndex, Symbol
 from app.models.retrieval import RetrievedContext
+from app.models.symbol import Symbol, SymbolIndex
 
 logger = logging.getLogger(__name__)
 

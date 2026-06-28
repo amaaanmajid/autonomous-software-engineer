@@ -14,25 +14,25 @@ node reads from and writes to.
 """
 import logging
 
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
-from app.models.state import AgentState
-from app.models.issue import IssueInput
-from app.agents.indexing_agent import RepositoryIndexingAgent
-from app.agents.retrieval_agent import RetrievalAgent
-from app.agents.issue_analysis_agent import IssueAnalysisAgent
 from app.agents.code_fix_agent import CodeFixAgent
+from app.agents.indexing_agent import RepositoryIndexingAgent
+from app.agents.issue_analysis_agent import IssueAnalysisAgent
 from app.agents.patch_applicator import PatchApplicator
 from app.agents.pr_generation_agent import PRGenerationAgent
-from app.docker_runner.runner import DockerTestRunner
-from app.hooks.pre_code_generation import pre_code_generation_hook, HookValidationError as PreCodeError
-from app.hooks.post_code_generation import post_code_generation_hook
-from app.hooks.pre_test import pre_test_hook
-from app.hooks.post_test import post_test_hook
-from app.hooks.pre_pr import pre_pr_hook
+from app.agents.retrieval_agent import RetrievalAgent
 from app.config import settings
+from app.docker_runner.runner import DockerTestRunner
+from app.hooks.post_code_generation import post_code_generation_hook
+from app.hooks.post_test import post_test_hook
+from app.hooks.pre_code_generation import HookValidationError as PreCodeError
+from app.hooks.pre_code_generation import pre_code_generation_hook
+from app.hooks.pre_pr import pre_pr_hook
+from app.hooks.pre_test import pre_test_hook
 from app.llm import get_llm
+from app.models.state import AgentState
 from app.vectorstore.faiss_store import FAISSStore
 
 logger = logging.getLogger(__name__)

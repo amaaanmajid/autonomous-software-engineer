@@ -14,11 +14,11 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.models.issue import IssueInput, IssueAnalysis
-from app.models.patch import PatchSet
-from app.models.test_result import TestResult
-from app.models.pr import PRDraft
 from app.github.pr_builder import PRBuilder
+from app.models.issue import IssueAnalysis, IssueInput
+from app.models.patch import PatchSet
+from app.models.pr import PRDraft
+from app.models.test_result import TestResult
 
 logger = logging.getLogger(__name__)
 

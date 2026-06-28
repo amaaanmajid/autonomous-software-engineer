@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -19,7 +18,7 @@ class Symbol(BaseModel):
     end_line: int
     source_code: str
     language: str
-    docstring: Optional[str] = None
+    docstring: str | None = None
 
 
 class SymbolIndex(BaseModel):

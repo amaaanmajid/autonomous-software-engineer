@@ -1,7 +1,7 @@
 import logging
 
-from app.models.pr import PRDraft
 from app.github.client import get_github_client
+from app.models.pr import PRDraft
 
 logger = logging.getLogger(__name__)
 

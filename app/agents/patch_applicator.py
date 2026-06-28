@@ -7,12 +7,12 @@ Applies FilePatch objects to the target repository:
 3. Commits the changes
 """
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import git
 
-from app.models.patch import FilePatch, PatchSet, PatchOperation
+from app.models.patch import FilePatch, PatchOperation, PatchSet
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,12 @@ class PatchApplicator:
             total_files=patch_set.total_files,
             description=patch_set.description,
             applied=True,
-            applied_at=datetime.now(timezone.utc).isoformat(),
+            applied_at=datetime.now(UTC).isoformat(),
             branch_name=branch_name,
         )
 
     def _create_branch(self, repo: git.Repo, patch_set: PatchSet) -> str:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         branch_name = f"fix/auto-{timestamp}"
 
         repo.git.checkout("-b", branch_name)

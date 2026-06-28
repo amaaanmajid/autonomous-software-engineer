@@ -6,14 +6,13 @@ from the GitHub API, then runs the full autonomous pipeline (clone → index →
 fix → test → PR).
 """
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.agents.indexing_agent import RepositoryIndexingAgent
 from app.github.client import GitHubClient
 from app.github.cloner import RepoCloner
-from app.agents.indexing_agent import RepositoryIndexingAgent
 from app.models.issue import IssueInput
 from app.models.pr import PRDraft
 from app.workflow.graph import compiled_graph
@@ -30,14 +29,14 @@ class ProcessGitHubIssueRequest(BaseModel):
 class ProcessGitHubIssueResponse(BaseModel):
     issue_number: int
     issue_title: str
-    pr_url: Optional[str] = None
-    pr_number: Optional[int] = None
-    pr_title: Optional[str] = None
-    root_cause: Optional[str] = None
+    pr_url: str | None = None
+    pr_number: int | None = None
+    pr_title: str | None = None
+    root_cause: str | None = None
     files_changed: list[str] = []
     test_passed: bool = False
-    cloned_to: Optional[str] = None
-    error: Optional[str] = None
+    cloned_to: str | None = None
+    error: str | None = None
 
 
 @router.post("", response_model=ProcessGitHubIssueResponse)
@@ -86,7 +85,7 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
         logger.info("Starting workflow for issue #%d", fetched.number)
         final_state = await compiled_graph.ainvoke(initial_state, config=config)
 
-        pr: Optional[PRDraft] = final_state.get("pr_draft")
+        pr: PRDraft | None = final_state.get("pr_draft")
         test_result = final_state.get("test_result")
         analysis = final_state.get("analysis")
 

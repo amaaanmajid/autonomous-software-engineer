@@ -14,7 +14,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.models.issue import IssueInput, IssueAnalysis, IssueSeverity
+from app.models.issue import IssueAnalysis, IssueInput, IssueSeverity
 from app.models.retrieval import RetrievalResult
 
 logger = logging.getLogger(__name__)

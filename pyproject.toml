@@ -75,8 +75,17 @@ packages = ["app"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line too long
+    "B008",   # Depends() in defaults — standard FastAPI pattern
+    "B904",   # raise from err — not required in HTTP handlers
+    "SIM105", # contextlib.suppress — try/except is clearer here
+    "B905",   # zip strict= — internal use, no need
+    "UP042",  # StrEnum — keep str+Enum for Pydantic v2 compatibility
+]
 
 [tool.black]
 line-length = 88

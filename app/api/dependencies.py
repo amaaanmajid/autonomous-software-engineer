@@ -1,11 +1,10 @@
 """FastAPI dependency injection."""
 from functools import lru_cache
 
-from app.config import Settings, settings
-from app.llm import get_llm
-from app.vectorstore.faiss_store import FAISSStore
 from app.agents.indexing_agent import RepositoryIndexingAgent
+from app.config import Settings, settings
 from app.docker_runner.runner import DockerTestRunner
+from app.vectorstore.faiss_store import FAISSStore
 
 
 @lru_cache(maxsize=1)

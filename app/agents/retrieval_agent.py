@@ -10,7 +10,7 @@ Responsibilities:
 import logging
 
 from app.models.issue import IssueInput
-from app.models.retrieval import RetrievedContext, RetrievalResult
+from app.models.retrieval import RetrievalResult, RetrievedContext
 from app.models.symbol import SymbolIndex
 from app.retrieval.exact_matcher import ExactMatcher
 from app.retrieval.semantic_retriever import SemanticRetriever

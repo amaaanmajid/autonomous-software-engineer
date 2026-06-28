@@ -5,8 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import github_issues, indexing, issues, pr, testing
 from app.config import configure_logging, settings
-from app.api.routes import indexing, issues, testing, pr, github_issues
 
 configure_logging()
 logger = logging.getLogger(__name__)

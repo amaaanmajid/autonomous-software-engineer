@@ -1,14 +1,14 @@
 import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 
 from app.agents.pr_generation_agent import PRGenerationAgent
-from app.models.patch import PatchSet, FilePatch, PatchOperation
-from app.models.test_result import TestResult
-from app.models.issue import IssueInput, IssueAnalysis, IssueSeverity
-from app.models.pr import PRDraft
 from app.llm import get_llm
+from app.models.issue import IssueAnalysis, IssueInput, IssueSeverity
+from app.models.patch import FilePatch, PatchOperation, PatchSet
+from app.models.pr import PRDraft
+from app.models.test_result import TestResult
 
 router = APIRouter(prefix="/generate-pr", tags=["pr"])
 logger = logging.getLogger(__name__)

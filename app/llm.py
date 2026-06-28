@@ -31,7 +31,9 @@ def get_llm() -> BaseChatModel:
     try:
         from langchain_ollama import ChatOllama
     except ImportError:
-        from langchain_community.chat_models.ollama import ChatOllama  # type: ignore[no-redef]
+        from langchain_community.chat_models.ollama import (
+            ChatOllama,  # type: ignore[no-redef]
+        )
     logger.info("Using Ollama model: %s", settings.ollama_model)
     return ChatOllama(
         base_url=settings.ollama_base_url,

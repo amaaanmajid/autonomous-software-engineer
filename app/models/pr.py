@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -12,5 +11,5 @@ class PRDraft(BaseModel):
     base_branch: str = "main"
     head_branch: str
     test_results_summary: str
-    pr_url: Optional[str] = None
-    pr_number: Optional[int] = None
+    pr_url: str | None = None
+    pr_number: int | None = None

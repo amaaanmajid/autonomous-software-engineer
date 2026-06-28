@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,7 +13,7 @@ class IssueSeverity(str, Enum):
 class IssueInput(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     description: str = Field(..., min_length=1)
-    issue_number: Optional[int] = None
+    issue_number: int | None = None
     labels: list[str] = Field(default_factory=list)
     repository_path: str = Field(default="", description="Absolute local path to the repository (set automatically after cloning)")
 

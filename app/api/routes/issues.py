@@ -1,13 +1,13 @@
 import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 
+from app.agents.indexing_agent import RepositoryIndexingAgent
+from app.github.cloner import RepoCloner
 from app.models.issue import IssueInput
 from app.models.pr import PRDraft
 from app.workflow.graph import compiled_graph
-from app.github.cloner import RepoCloner
-from app.agents.indexing_agent import RepositoryIndexingAgent
 
 router = APIRouter(prefix="/process-issue", tags=["issues"])
 logger = logging.getLogger(__name__)
@@ -17,19 +17,19 @@ class ProcessIssueRequest(BaseModel):
     title: str
     description: str
     github_url: str                     # e.g. https://github.com/owner/repo
-    issue_number: Optional[int] = None
+    issue_number: int | None = None
     labels: list[str] = []
 
 
 class ProcessIssueResponse(BaseModel):
-    pr_url: Optional[str]
-    pr_number: Optional[int]
-    pr_title: Optional[str]
-    root_cause: Optional[str]
+    pr_url: str | None
+    pr_number: int | None
+    pr_title: str | None
+    root_cause: str | None
     files_changed: list[str]
     test_passed: bool
-    cloned_to: Optional[str] = None
-    error: Optional[str] = None
+    cloned_to: str | None = None
+    error: str | None = None
 
 
 @router.post("", response_model=ProcessIssueResponse)
@@ -78,7 +78,7 @@ async def process_issue(request: ProcessIssueRequest) -> ProcessIssueResponse:
         logger.info("Starting workflow for: %s", request.title)
         final_state = await compiled_graph.ainvoke(initial_state, config=config)
 
-        pr: Optional[PRDraft] = final_state.get("pr_draft")
+        pr: PRDraft | None = final_state.get("pr_draft")
         test_result = final_state.get("test_result")
         analysis = final_state.get("analysis")
 
