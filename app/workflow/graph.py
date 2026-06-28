@@ -33,6 +33,7 @@ from app.hooks.pre_pr import pre_pr_hook
 from app.hooks.pre_test import pre_test_hook
 from app.llm import get_llm
 from app.models.state import AgentState
+from app.retrieval.semantic_retriever import SemanticRetriever  # noqa: F401
 from app.vectorstore.faiss_store import FAISSStore
 
 logger = logging.getLogger(__name__)
