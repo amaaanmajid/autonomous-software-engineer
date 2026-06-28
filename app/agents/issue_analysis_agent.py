@@ -12,10 +12,10 @@ import logging
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.models.issue import IssueAnalysis, IssueInput, IssueSeverity
 from app.models.retrieval import RetrievalResult
+from app.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class IssueAnalysisAgent:
     def __init__(self, llm: BaseChatModel) -> None:
         self._llm = llm
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @llm_retry
     def analyze(self, issue: IssueInput, context: RetrievalResult) -> IssueAnalysis:
         """Send issue + retrieved code to LLM, return structured analysis."""
         context_block = self._format_context(context)

@@ -11,11 +11,11 @@ import logging
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.models.issue import IssueAnalysis, IssueInput
 from app.models.patch import FilePatch, PatchSet
 from app.models.retrieval import RetrievalResult
+from app.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class CodeFixAgent:
     def __init__(self, llm: BaseChatModel) -> None:
         self._llm = llm
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @llm_retry
     def generate_fix(
         self,
         issue: IssueInput,

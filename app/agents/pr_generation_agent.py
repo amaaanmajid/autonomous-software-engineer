@@ -12,13 +12,13 @@ import logging
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.github.pr_builder import PRBuilder
 from app.models.issue import IssueAnalysis, IssueInput
 from app.models.patch import PatchSet
 from app.models.pr import PRDraft
 from app.models.test_result import TestResult
+from app.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class PRGenerationAgent:
         self._llm = llm
         self._pr_builder = pr_builder or PRBuilder()
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    @llm_retry
     def generate_pr(
         self,
         issue: IssueInput,
