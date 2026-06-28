@@ -50,13 +50,6 @@ def build_graph() -> StateGraph:
     except FileNotFoundError:
         logger.warning("FAISS index not found — retrieval will return empty results until indexed.")
 
-    symbol_index = None
-    try:
-        symbol_index = RepositoryIndexingAgent.load_symbol_index()
-    except FileNotFoundError:
-        logger.warning("Symbol index not found — exact matching disabled until indexed.")
-
-    retrieval_agent = RetrievalAgent(symbol_index, faiss_store) if symbol_index else None
     analysis_agent = IssueAnalysisAgent(llm)
     fix_agent = CodeFixAgent(llm)
     applicator = PatchApplicator()
