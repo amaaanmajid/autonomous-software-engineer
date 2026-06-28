@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "codellama:7b"
+    hf_token: str = ""
+    hf_model: str = "Qwen/Qwen2.5-Coder-32B-Instruct"
 
     # GitHub
     github_token: str = ""
