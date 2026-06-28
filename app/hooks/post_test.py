@@ -19,6 +19,10 @@ def post_test_hook(test_result: TestResult) -> None:
         test_result.failed_tests,
     )
 
+    if test_result.skipped:
+        logger.info("post_test_hook: no test files found — skipping")
+        return
+
     if not test_result.passed:
         raise HookValidationError(
             f"Tests failed ({test_result.failed_tests} failure(s)). "
