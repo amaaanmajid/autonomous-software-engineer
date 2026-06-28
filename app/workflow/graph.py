@@ -43,13 +43,6 @@ def build_graph() -> StateGraph:
 
     # ── Shared services ──────────────────────────────────────────────────────
     llm = get_llm()
-    faiss_store = FAISSStore(model_name=settings.embedding_model)
-
-    try:
-        faiss_store.load(settings.faiss_index_path)
-    except FileNotFoundError:
-        logger.warning("FAISS index not found — retrieval will return empty results until indexed.")
-
     analysis_agent = IssueAnalysisAgent(llm)
     fix_agent = CodeFixAgent(llm)
     applicator = PatchApplicator()
