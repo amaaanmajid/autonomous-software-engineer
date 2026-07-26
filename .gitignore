@@ -39,3 +39,6 @@ app/parsers/grammars/*.so
 
 # Claude Code config (local only)
 .claude/
+
+claude.md
+

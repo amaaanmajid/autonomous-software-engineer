@@ -7,37 +7,46 @@ An AI agent that accepts a GitHub issue, finds the relevant code, generates a fi
 ## Architecture
 
 ```
-POST /process-issue
+POST /process-github-issue
+        ↓
+  Clone Repo + Index with Tree-sitter + FAISS
         ↓
   LangGraph Workflow
         ↓
-  analyze_issue  →  retrieve_context  →  generate_fix
-       ↑                                       ↓
-       └──── retry (max 3) ──── run_tests ← apply_patch
-                                    ↓ (pass)
-                              generate_pr → PR URL
+  analyze_issue → retrieve_context → generate_fix
+       ↑                                    ↓
+       └──── retry (max 3) ── run_tests ← apply_patch
+                                  ↓ (pass)
+                            generate_pr → PR URL
 ```
 
-**Stack:** Python 3.11 · FastAPI · LangGraph · Tree-sitter · FAISS · GitPython · Docker · GitHub API
+**Stack:** Python 3.11 · FastAPI · LangGraph · Tree-sitter · FAISS · Groq (llama-3.3-70b) · GitPython · Docker · GitHub API
+
+---
+
+## How It Works
+
+1. You send a GitHub repo URL + issue number
+2. The agent clones the repo and parses every `.py`/`.js`/`.ts` file with Tree-sitter → extracts functions and classes as `Symbol` objects
+3. Each symbol's source code is embedded into a 384-dim vector using `all-MiniLM-L6-v2` and stored in FAISS
+4. The issue text is embedded and matched against FAISS → top 5 most relevant symbols retrieved
+5. LLM (Groq) analyzes the issue, generates a patch, applies it to a new git branch, and runs tests in Docker
+6. If tests pass → PR is opened automatically
 
 ---
 
 ## Quick Start
 
-### 1. Prerequisites
+### Prerequisites
 
-- Python 3.11 (via pyenv)
-- Docker Desktop running
-- Google Gemini API key (free at [aistudio.google.com](https://aistudio.google.com/app/apikey))
+- Python 3.11
+- Docker Desktop (for running tests)
+- [Groq API key](https://console.groq.com) (free)
 - GitHub Personal Access Token (repo + pull_request scopes)
 
-### 2. Setup
+### Setup
 
 ```bash
-# Install Python 3.11
-pyenv install 3.11.9
-pyenv local 3.11.9
-
 # Create virtualenv
 python -m venv .venv
 source .venv/bin/activate
@@ -47,10 +56,10 @@ pip install -e ".[dev]"
 
 # Configure environment
 cp .env.example .env
-# Edit .env and fill in GOOGLE_API_KEY, GITHUB_TOKEN, etc.
+# Edit .env — fill in GROQ_API_KEY, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 ```
 
-### 3. Run the API
+### Run the API
 
 ```bash
 uvicorn app.main:app --reload
@@ -62,35 +71,29 @@ API docs: http://localhost:8000/docs
 
 ## Usage
 
-### Step 1 — Index a repository
+Send a GitHub issue URL + issue number:
 
 ```bash
-curl -X POST http://localhost:8000/index-repository \
-  -H "Content-Type: application/json" \
-  -d '{"repository_path": "/path/to/your/repo"}'
-```
-
-### Step 2 — Process an issue
-
-```bash
-curl -X POST http://localhost:8000/process-issue \
+curl -X POST http://localhost:8000/process-github-issue \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Registration fails when user email is null",
-    "description": "When a user submits the registration form without an email address, the server throws a 500 error instead of returning a validation message.",
-    "repository_path": "/path/to/your/repo",
-    "issue_number": 42
+    "github_url": "https://github.com/your-username/your-repo",
+    "issue_number": 1
   }'
 ```
 
 Response:
+
 ```json
 {
-  "pr_url": "https://github.com/you/repo/pull/43",
-  "pr_title": "fix: handle null email in register_user()",
-  "root_cause": "register_user() calls email.lower() without null check",
-  "files_changed": ["app/auth/registration.py"],
-  "test_passed": true
+  "issue_number": 1,
+  "issue_title": "App crashes with no useful error when database goes down",
+  "pr_url": "https://github.com/your-username/your-repo/pull/2",
+  "pr_title": "fix: add error handling for database connection failures",
+  "root_cause": "Uncaught database exception in get_db function",
+  "files_changed": ["app/backend/database.py"],
+  "test_passed": true,
+  "cloned_to": "/tmp/ase_workspace/your-username_your-repo"
 }
 ```
 
@@ -100,8 +103,9 @@ Response:
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /index-repository` | Parse a repo with Tree-sitter, build FAISS index |
-| `POST /process-issue` | Run full pipeline: analyze → fix → test → PR |
+| `POST /process-github-issue` | Full pipeline: clone → index → analyze → fix → test → PR |
+| `POST /index-repository` | Parse a local repo with Tree-sitter, build FAISS index |
+| `POST /process-issue` | Run pipeline on an already-indexed local repo |
 | `POST /run-tests` | Run pytest in Docker (standalone) |
 | `POST /generate-pr` | Create a GitHub PR from an existing patch (standalone) |
 | `GET /health` | Health check |
@@ -112,58 +116,53 @@ Response:
 
 ```
 app/
-├── agents/          # 5 specialized agents + patch applicator
+├── agents/          # Indexing, retrieval, analysis, fix generation, patch applicator, PR generation
 ├── api/             # FastAPI routes + dependency injection
-├── hooks/           # Pre/post validation hooks
+├── hooks/           # Pre/post validation hooks (code gen, tests, PR)
 ├── models/          # Pydantic schemas (issue, symbol, patch, PR, state)
-├── parsers/         # Tree-sitter code parser
-├── retrieval/       # Exact + semantic retrieval
-├── vectorstore/     # FAISS store with HuggingFace embeddings
-├── github/          # GitHub API client + PR builder
-├── docker_runner/   # Docker-based test runner
-├── workflow/        # LangGraph StateGraph
-├── config.py        # Pydantic Settings
-├── llm.py           # LLM factory (Gemini / Ollama)
+├── parsers/         # Tree-sitter code parser (Python, JS, TS)
+├── retrieval/       # Exact name match + semantic FAISS retrieval
+├── vectorstore/     # FAISS store with sentence-transformers embeddings
+├── github/          # GitHub API client, repo cloner, PR builder
+├── docker_runner/   # Docker-based pytest runner
+├── workflow/        # LangGraph StateGraph (full pipeline)
+├── config.py        # Pydantic Settings (reads .env)
+├── llm.py           # LLM factory (Groq → Ollama fallback)
 └── main.py          # FastAPI entry point
-```
-
----
-
-## Running Tests
-
-```bash
-pytest tests/ -v
-```
-
----
-
-## Docker
-
-```bash
-docker-compose up
 ```
 
 ---
 
 ## Environment Variables
 
-See `.env.example` for all available options.
-
-Key variables:
-
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_API_KEY` | Gemini Flash API key (free) |
-| `GITHUB_TOKEN` | GitHub PAT |
-| `GITHUB_REPO_OWNER` | Your GitHub username |
-| `GITHUB_REPO_NAME` | Repo name for PRs |
+| `GROQ_API_KEY` | Groq API key — get free at console.groq.com |
+| `GROQ_MODEL` | Model to use (default: `llama-3.3-70b-versatile`) |
+| `GITHUB_TOKEN` | GitHub PAT for cloning and creating PRs |
+| `GITHUB_REPO_OWNER` | Your GitHub username (fallback if not derived from issue URL) |
+| `GITHUB_REPO_NAME` | Repo name (fallback if not derived from issue URL) |
+| `DOCKER_TIMEOUT` | Seconds before Docker test run times out |
+| `FAISS_INDEX_PATH` | Where to save/load FAISS index (default: `data/faiss_index`) |
+| `SYMBOL_INDEX_PATH` | Where to save/load symbol index JSON (default: `data/symbol_index.json`) |
+
+---
+
+## Known Limitations
+
+- LLM sometimes generates `original_code` that doesn't exactly match the file → patch is skipped silently
+- Only top 5 symbols are retrieved — on large repos the right function may not be in the top 5
+- File imports are not included in LLM context — LLM may add calls to unimported modules
+- Tests run inside Docker require the repo to have a working `pytest` setup
 
 ---
 
 ## Future Roadmap
 
-- Call graph traversal with Neo4j
-- Multi-repository analysis
-- Human approval node
-- Web UI dashboard
+- Unified diff format for patches (eliminates `original_code` hallucination)
+- Include file import headers in LLM context
+- Call graph traversal — retrieve callers/callees of matched functions
+- Human approval node before PR is raised
+- Web UI with diff preview
 - Support for Go, Rust, Java
+- Multi-agent parallel fix generation
