@@ -16,6 +16,7 @@ class IssueInput(BaseModel):
     issue_number: int | None = None
     labels: list[str] = Field(default_factory=list)
     repository_path: str = Field(default="", description="Absolute local path to the repository (set automatically after cloning)")
+    github_url: str = Field(default="", description="Original GitHub repo URL (e.g. https://github.com/owner/repo)")
 
 
 class IssueAnalysis(BaseModel):

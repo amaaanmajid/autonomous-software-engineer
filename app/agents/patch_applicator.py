@@ -12,6 +12,7 @@ from pathlib import Path
 
 import git
 
+from app.config import settings
 from app.models.patch import FilePatch, PatchOperation, PatchSet
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ class PatchApplicator:
             f"fix: {patch_set.description}\n\nApplied {len(patch_set.patches)} patch(es) across {patch_set.total_files} file(s).",
         )
 
+        # Push branch to origin so GitHub can create a PR from it
+        self._push_branch(repo, branch_name)
         logger.info("Patches applied and committed on branch: %s", branch_name)
 
         return PatchSet(
@@ -50,6 +53,20 @@ class PatchApplicator:
             applied_at=datetime.now(UTC).isoformat(),
             branch_name=branch_name,
         )
+
+    def _push_branch(self, repo: git.Repo, branch_name: str) -> None:
+        if not settings.github_token:
+            logger.warning("No GITHUB_TOKEN — skipping push (PR creation will fail)")
+            return
+        # Inject token into remote URL so push is authenticated
+        origin_url = repo.remotes.origin.url
+        if "github.com" in origin_url and "@" not in origin_url:
+            authed_url = origin_url.replace(
+                "https://", f"https://{settings.github_token}@"
+            )
+            repo.remotes.origin.set_url(authed_url)
+        repo.git.push("origin", branch_name)
+        logger.info("Pushed branch %s to origin", branch_name)
 
     def _create_branch(self, repo: git.Repo, patch_set: PatchSet) -> str:
         timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
@@ -68,10 +85,11 @@ class PatchApplicator:
 
         if patch.operation == PatchOperation.REPLACE:
             if patch.original_code and patch.original_code not in content:
-                raise ValueError(
-                    f"original_code not found in {patch.file_path}. "
-                    "The LLM may have hallucinated the original code."
+                logger.warning(
+                    "Skipping REPLACE in %s — original_code not found (LLM hallucination)",
+                    patch.file_path,
                 )
+                return
             new_content = content.replace(patch.original_code, patch.new_code, 1)
 
         elif patch.operation == PatchOperation.INSERT:

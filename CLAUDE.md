@@ -130,7 +130,8 @@ Both are built together in `RepositoryIndexingAgent.index_repository()`:
 
 ## LLM Configuration
 
-- Primary: Google Gemini 1.5 Flash (free tier, 15 RPM) — set `GOOGLE_API_KEY`
+- Primary: Grok (xAI) via OpenAI-compatible API — set `XAI_API_KEY` (get at console.x.ai)
+- Model: `grok-3-mini` by default, configurable via `XAI_MODEL`
 - Fallback: Ollama (local) — set `OLLAMA_BASE_URL` + `OLLAMA_MODEL`
 - All LLM calls use `tenacity` retry with exponential backoff (handles 429 rate limits)
 - Prompts always request structured JSON — responses are parsed into Pydantic models
@@ -151,7 +152,7 @@ Both are built together in `RepositoryIndexingAgent.index_repository()`:
 
 | Key | Purpose |
 |-----|---------|
-| `GOOGLE_API_KEY` | Gemini Flash LLM (free at aistudio.google.com) |
+| `XAI_API_KEY` | Grok LLM (get at console.x.ai) |
 | `GITHUB_TOKEN` | GitHub PAT for creating PRs |
 | `GITHUB_REPO_OWNER` | Your GitHub username |
 | `GITHUB_REPO_NAME` | Target repo name |

@@ -27,13 +27,12 @@ class GitHubClient:
         else:
             self._gh = Github(settings.github_token)
 
-    def get_repo(self) -> Repository | None:
+    def get_repo(self, repo_slug: str = "") -> Repository | None:
         if not self._gh:
             return None
+        slug = repo_slug or f"{settings.github_repo_owner}/{settings.github_repo_name}"
         try:
-            return self._gh.get_repo(
-                f"{settings.github_repo_owner}/{settings.github_repo_name}"
-            )
+            return self._gh.get_repo(slug)
         except GithubException as e:
             logger.error("Failed to get GitHub repo: %s", e)
             return None

@@ -14,7 +14,7 @@ class PRBuilder:
             logger.warning("GitHub not configured — skipping PR creation. Draft returned as-is.")
             return draft
 
-        repo = client.get_repo()
+        repo = client.get_repo(draft.repo_slug)
         if not repo:
             logger.warning("Could not fetch GitHub repo — skipping PR creation.")
             return draft

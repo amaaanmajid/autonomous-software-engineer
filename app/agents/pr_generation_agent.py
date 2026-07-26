@@ -13,6 +13,7 @@ import logging
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from app.github.client import _slug_from_url
 from app.github.pr_builder import PRBuilder
 from app.models.issue import IssueAnalysis, IssueInput
 from app.models.patch import PatchSet
@@ -91,6 +92,13 @@ Generate the PR title and description as JSON."""
             else f"❌ {test_result.failed_tests} tests failed"
         )
 
+        repo_slug = ""
+        if issue.github_url:
+            try:
+                repo_slug = _slug_from_url(issue.github_url)
+            except ValueError:
+                pass
+
         draft = PRDraft(
             title=data["title"],
             description=data["description"],
@@ -99,6 +107,7 @@ Generate the PR title and description as JSON."""
             file_summaries=data.get("file_summaries", {}),
             head_branch=patch_set.branch_name or "fix/auto",
             test_results_summary=test_summary,
+            repo_slug=repo_slug,
         )
 
         # Create actual PR on GitHub (no-op if GitHub token not configured)

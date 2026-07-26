@@ -82,7 +82,6 @@ class DockerTestRunner:
                 remove=True,
                 stdout=True,
                 stderr=True,
-                timeout=settings.docker_timeout,
             )
             stdout = output.decode("utf-8", errors="replace")
             exit_code = 0

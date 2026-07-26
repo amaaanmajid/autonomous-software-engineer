@@ -10,6 +10,7 @@ class PRDraft(BaseModel):
     file_summaries: dict[str, str]
     base_branch: str = "main"
     head_branch: str
+    repo_slug: str = ""  # "owner/repo" derived from issue github_url
     test_results_summary: str
     pr_url: str | None = None
     pr_number: int | None = None

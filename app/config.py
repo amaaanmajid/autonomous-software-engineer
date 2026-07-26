@@ -12,11 +12,10 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    google_api_key: str = ""
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "codellama:7b"
-    hf_token: str = ""
-    hf_model: str = "Qwen/Qwen2.5-Coder-32B-Instruct"
 
     # GitHub
     github_token: str = ""
@@ -39,7 +38,7 @@ class Settings(BaseSettings):
 
     # Retrieval
     embedding_model: str = "all-MiniLM-L6-v2"
-    retrieval_top_k: int = 10
+    retrieval_top_k: int = 5
 
     # LangGraph
     max_retries: int = 3

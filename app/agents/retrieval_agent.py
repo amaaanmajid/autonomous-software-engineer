@@ -35,7 +35,8 @@ class RetrievalAgent:
 
         exact_results = self._exact.match(query)
         semantic_results = self._semantic.retrieve(query, top_k=top_k)
-
+        print("Exact results:", [r.symbol.name for r in exact_results])
+        print("Semantic results:", [r.symbol.name for r in semantic_results])
         merged = self._merge(exact_results, semantic_results, top_k=top_k)
 
         logger.info(

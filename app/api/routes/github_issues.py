@@ -70,6 +70,7 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
             repository_path=repository_path,
             issue_number=fetched.number,
             labels=fetched.labels,
+            github_url=request.github_url,
         )
         initial_state = {
             "issue": issue,

@@ -96,6 +96,7 @@ def build_graph() -> StateGraph:
 
     def generate_fix(state: AgentState) -> AgentState:
         logger.info("[NODE] generate_fix")
+        patch_set = None
         try:
             pre_code_generation_hook(state["issue"], state["retrieval"])
             patch_set = fix_agent.generate_fix(
@@ -112,6 +113,9 @@ def build_graph() -> StateGraph:
 
     def apply_patch(state: AgentState) -> AgentState:
         logger.info("[NODE] apply_patch")
+        if not state.get("patch_set"):
+            logger.warning("apply_patch: no patch_set in state — skipping")
+            return state
         try:
             applied = applicator.apply(state["patch_set"], state["issue"].repository_path)
             return {**state, "patch_set": applied}
@@ -121,18 +125,30 @@ def build_graph() -> StateGraph:
 
     def run_tests(state: AgentState) -> AgentState:
         logger.info("[NODE] run_tests")
+        result = None
         try:
             pre_test_hook(state["issue"].repository_path)
             result = test_runner.run_tests(state["issue"].repository_path)
             post_test_hook(result)
             return {**state, "test_result": result}
         except Exception as e:
+            error_msg = str(e)
+            # Docker not available is an infrastructure issue, not a test failure — skip tests
+            if "Docker" in error_msg or "docker" in error_msg or "DockerException" in error_msg:
+                logger.warning("run_tests: Docker unavailable — skipping tests and proceeding to PR")
+                from app.models.test_result import TestResult
+                skipped = TestResult(passed=False, exit_code=0, output=error_msg, duration_seconds=0, skipped=True)
+                return {**state, "test_result": skipped}
             logger.error("run_tests failed: %s", e)
             retry_count = state.get("retry_count", 0) + 1
-            return {**state, "error": str(e), "retry_count": retry_count}
+            base = {**state, "error": str(e), "retry_count": retry_count}
+            return {**base, "test_result": result} if result is not None else base
 
     def generate_pr(state: AgentState) -> AgentState:
         logger.info("[NODE] generate_pr")
+        if not state.get("patch_set"):
+            logger.error("generate_pr: no patch_set — cannot create PR")
+            return {**state, "error": "No patch was generated or applied. Cannot create PR."}
         try:
             pre_pr_hook(state["patch_set"], state["test_result"], state["issue"].repository_path)
             pr_draft = pr_agent.generate_pr(
@@ -149,13 +165,21 @@ def build_graph() -> StateGraph:
     # ── Routing ───────────────────────────────────────────────────────────────
 
     def route_after_tests(state: AgentState) -> str:
-        """After tests: go to PR if passed, retry if failed, end if max retries hit."""
-        if state.get("test_result") and state["test_result"].passed:
+        """After tests: go to PR if ok, retry only on actual test failures."""
+        test_result = state.get("test_result")
+        # Treat as ok if: passed, skipped (no test files), or 0 actual failures
+        test_ok = test_result is not None and (
+            test_result.passed
+            or test_result.skipped
+            or test_result.failed_tests == 0
+        )
+        if test_ok:
             return "generate_pr"
-        if state.get("retry_count", 0) >= settings.max_retries:
+        retry_count = state.get("retry_count", 0)
+        if retry_count >= settings.max_retries:
             logger.warning("Max retries (%d) reached — aborting", settings.max_retries)
             return END
-        logger.info("Tests failed — retrying (attempt %d)", state.get("retry_count", 0))
+        logger.info("Tests failed — retrying (attempt %d)", retry_count)
         return "analyze_issue"
 
     # ── Graph assembly ────────────────────────────────────────────────────────

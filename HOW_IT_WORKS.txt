@@ -1,0 +1,187 @@
+HOW THE AUTONOMOUS SOFTWARE ENGINEER WORKS
+==========================================
+
+
+OVERVIEW
+--------
+You send a GitHub URL + issue number. The agent clones the repo, understands
+the code, generates a fix, runs tests, and opens a PR. All automatically.
+
+
+STEP 1 — FETCH & CLONE
+-----------------------
+- Pulls issue title + description from GitHub API
+- Deletes any old copy of the repo and clones fresh to /tmp/ase_workspace/
+
+
+STEP 2 — PARSE (Tree-sitter)
+-----------------------------
+Tree-sitter reads every .py / .js / .ts file and builds an AST (Abstract
+Syntax Tree). An AST is a tree where every piece of code is a node with a
+type and children.
+
+Example AST for:
+    def compute_similarity(self, s1, s2):
+        return self.alpha * sem
+
+    module
+    └── function_definition
+          ├── "def"          (keyword)
+          ├── "compute_similarity"  ← identifier (the name)
+          ├── parameters
+          └── body
+
+We walk every node in the tree with _walk() — a recursive function that
+visits every node depth-first. It asks one question per node:
+"is your type function_definition or class_definition?"
+
+If yes → we extract exactly 3 things from the AST node:
+  1. node.type        → "function_definition" or "class_definition"
+  2. child.text       → the name ("compute_similarity", "UserService", etc.)
+                        found by looking for the child whose type == "identifier"
+  3. node.start_point → start line number
+     node.end_point   → end line number
+
+We do NOT extract the code from the AST. We use the line numbers to slice
+the raw file text:
+    source_code = "\n".join(lines[start_line - 1 : end_line])
+
+Each extracted item becomes a Symbol object:
+
+    Symbol(
+        name        = "compute_similarity",
+        symbol_type = SymbolType.FUNCTION,
+        file_path   = "polarity_similarity.py",
+        start_line  = 9,
+        end_line    = 12,
+        source_code = "def compute_similarity(self, s1, s2):\n    ...",
+        language    = "python",
+        docstring   = None
+    )
+
+A file with 1 class + 3 methods = 4 Symbol objects (class + each method
+separately, because _walk recurses into the class body too).
+
+
+STEP 3 — EMBED & STORE IN FAISS
+---------------------------------
+FAISS is a vector search engine. It only stores numbers, not text or objects.
+
+For each Symbol:
+    source_code string → all-MiniLM-L6-v2 model → 384 numbers (a vector)
+
+The 384-number vector captures the *meaning* of the code.
+
+Two things stored in parallel:
+    FAISS slot 0 = [0.12, -0.34, 0.08, ... 384 numbers]  ← compute_similarity's vector
+    self._symbols[0] = Symbol(name="compute_similarity", ...)  ← the full object
+
+    FAISS slot 1 = [0.45, 0.21, -0.67, ... 384 numbers]  ← __init__'s vector
+    self._symbols[1] = Symbol(name="__init__", ...)
+
+Slot number is the only bridge between FAISS and the Symbol list.
+They must always stay in sync — symbol at index N = vector at slot N.
+
+Saved to disk as two files:
+    data/faiss_index.faiss        ← vectors (the search engine)
+    data/faiss_index.symbols.pkl  ← Symbol objects (the lookup table)
+
+
+STEP 4 — RETRIEVE (matching issue to code)
+-------------------------------------------
+The issue text gets embedded into a 384-vector using the same model.
+FAISS searches for the closest vectors to it.
+
+    "logging is not proper"  →  embed  →  [0.12, -0.34, ...]  →  FAISS search
+                                                                         ↓
+                                           slot 2 (compute_similarity) score 0.91
+                                           slot 0 (PolarityAwareSimilarity) score 0.87
+                                           slot 4 (standalone_function) score 0.61
+
+FAISS returns slot numbers. We use those to look up the full Symbol objects:
+    symbol = self._symbols[slot]
+
+We also do exact matching — tokenize the issue text and look for symbols
+whose names match. Exact matches get priority, FAISS fills the rest.
+Top 5 symbols total are kept.
+
+
+STEP 5 — ANALYZE (LLM call 1)
+------------------------------
+The issue + top 5 symbols' source_code is sent to the LLM (Groq).
+LLM returns structured JSON:
+    - root cause
+    - affected files
+    - suggested approach
+    - severity
+    - confidence
+
+
+STEP 6 — GENERATE FIX (LLM call 2)
+-------------------------------------
+Issue + analysis + top 5 source_code blocks sent to LLM again.
+LLM returns a JSON array of patches:
+    [
+      {
+        "file_path": "polarity_similarity.py",
+        "operation": "replace",
+        "original_code": "exact text currently in file",
+        "new_code": "the fixed code",
+        "description": "added proper logging"
+      }
+    ]
+
+
+STEP 7 — APPLY PATCH
+---------------------
+- Creates a new git branch (fix/auto-20260712...)
+- For each patch: opens the file, finds original_code, replaces with new_code
+- Commits all changes to the branch
+
+
+STEP 8 — RUN TESTS
+-------------------
+- If no test files found → skip
+- If test files exist → run pytest inside Docker
+- If 0 actual failures → allow through
+- If real failures → retry up to 3 times back to Step 5
+
+
+STEP 9 — OPEN PR (LLM call 3)
+------------------------------
+Issue + analysis + patches + test results sent to LLM.
+LLM writes a PR title and description.
+GitHub API creates the PR from the fix branch → main.
+
+
+FULL FLOW
+---------
+GitHub Issue URL
+      ↓
+  Clone Repo
+      ↓
+  Parse with Tree-sitter → Symbol objects
+      ↓
+  Embed source_code → 384 vectors → store in FAISS
+      ↓
+  Embed issue text → search FAISS → top 5 matching Symbols
+      ↓
+  Analyze Issue (LLM 1)
+      ↓
+  Generate Patch (LLM 2)
+      ↓
+  Apply Patch (git branch)
+      ↓
+  Run Tests (Docker)
+      ↓ fail → retry up to 3x back to Analyze
+  Open PR (LLM 3 + GitHub API)
+
+
+WHAT COMES FROM WHERE
+---------------------
+From AST:        node.type, name (child.text), start_line, end_line
+From file text:  source_code (sliced by line numbers)
+From embedding:  384-number vector (from source_code string)
+From FAISS:      slot numbers (closest matches to issue)
+From slot:       full Symbol object (name, file, lines, source_code)
+To LLM:          issue text + source_code strings of top 5 symbols

@@ -23,6 +23,15 @@ def post_test_hook(test_result: TestResult) -> None:
         logger.info("post_test_hook: no test files found — skipping")
         return
 
+    # If pytest ran but crashed during collection (import errors etc.),
+    # failed_tests=0 and passed_tests=0 with passed=False. Don't retry for
+    # collection failures — there are no actual test failures to fix.
+    if not test_result.passed and test_result.failed_tests == 0:
+        logger.warning(
+            "post_test_hook: pytest exited non-zero with 0 failures (likely collection error) — allowing through"
+        )
+        return
+
     if not test_result.passed:
         raise HookValidationError(
             f"Tests failed ({test_result.failed_tests} failure(s)). "

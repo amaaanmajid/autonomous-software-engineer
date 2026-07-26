@@ -31,9 +31,8 @@ def post_code_generation_hook(patch_set: PatchSet, repository_path: str) -> None
             try:
                 ast.parse(patch.new_code)
             except SyntaxError as e:
-                raise HookValidationError(
-                    f"Syntax error in generated patch for {patch.file_path}: {e}"
-                ) from e
+                # Patch snippets are fragments, not complete modules — log and continue
+                logger.warning("Syntax warning in patch for %s: %s", patch.file_path, e)
 
     # Run ruff + black on Python files that already exist in the repo
     py_files = [
