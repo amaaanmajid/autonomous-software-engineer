@@ -203,7 +203,3 @@ def build_graph(llm=None, github_token: str = "") -> StateGraph:
     graph.add_edge("generate_pr", END)
 
     return graph.compile(checkpointer=MemorySaver())
-
-
-# Module-level compiled graph — imported by FastAPI routes
-compiled_graph = build_graph()

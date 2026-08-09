@@ -6,6 +6,7 @@ from the GitHub API, then runs the full autonomous pipeline (clone → index →
 fix → test → PR).
 """
 import logging
+import shutil
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -54,6 +55,7 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
     4. Analyze → retrieve context → generate fix → apply patch
     5. Run tests in Docker → open PR if tests pass
     """
+    repository_path: str | None = None
     try:
         # Resolve github token — request overrides .env
         from app.config import settings as app_settings
@@ -103,7 +105,7 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
         test_result = final_state.get("test_result")
         analysis = final_state.get("analysis")
 
-        return ProcessGitHubIssueResponse(
+        response = ProcessGitHubIssueResponse(
             issue_number=fetched.number,
             issue_title=fetched.title,
             pr_url=pr.pr_url if pr else None,
@@ -115,7 +117,16 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
             cloned_to=repository_path,
             error=final_state.get("error"),
         )
+        return response
 
     except Exception as e:
         logger.exception("Workflow failed for issue #%d", request.issue_number)
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Clean up cloned repo to keep disk free
+        try:
+            if repository_path:
+                shutil.rmtree(repository_path, ignore_errors=True)
+                logger.info("Cleaned up workspace: %s", repository_path)
+        except Exception:
+            pass

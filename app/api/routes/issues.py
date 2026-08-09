@@ -7,7 +7,7 @@ from app.agents.indexing_agent import RepositoryIndexingAgent
 from app.github.cloner import RepoCloner
 from app.models.issue import IssueInput
 from app.models.pr import PRDraft
-from app.workflow.graph import compiled_graph
+from app.workflow.graph import build_graph
 
 router = APIRouter(prefix="/process-issue", tags=["issues"])
 logger = logging.getLogger(__name__)
@@ -76,7 +76,8 @@ async def process_issue(request: ProcessIssueRequest) -> ProcessIssueResponse:
         config = {"configurable": {"thread_id": f"issue-{request.issue_number or 'manual'}"}}
 
         logger.info("Starting workflow for: %s", request.title)
-        final_state = await compiled_graph.ainvoke(initial_state, config=config)
+        graph = build_graph()
+        final_state = await graph.ainvoke(initial_state, config=config)
 
         pr: PRDraft | None = final_state.get("pr_draft")
         test_result = final_state.get("test_result")
