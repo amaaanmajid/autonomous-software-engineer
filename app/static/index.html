@@ -999,10 +999,14 @@ function finishStepper(success) {
   stepTimers.forEach(clearTimeout);
   stepTimers = [];
   STEPS.forEach((_, i) => {
-    const el = document.getElementById('step-' + i);
-    if (!el) return;
-    el.className = 'step ' + (success ? 'done' : 'error');
-    el.querySelector('.step-dot').textContent = success ? '✓' : '✗';
+    setTimeout(() => {
+      const el = document.getElementById('step-' + i);
+      if (!el) return;
+      el.className = 'step ' + (success ? 'done' : 'error');
+      el.querySelector('.step-dot').textContent = success ? '✓' : '✗';
+      document.getElementById('step-meta-' + i).textContent = success ? 'done' : 'failed';
+      document.getElementById('step-log-' + i).style.display = 'none';
+    }, i * 120);
   });
 }
 
@@ -1047,6 +1051,7 @@ async function runPipeline() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    if (!data.issue_number) data.issue_number = issueNo;
     const ok = !data.error || !!data.pr_url;
     finishStepper(ok);
     await sleep(700);
@@ -1091,7 +1096,7 @@ function renderResults(data) {
     <div class="meta-grid">
       <div class="meta-cell">
         <div class="meta-label">Issue</div>
-        <div class="meta-val">#${data.issue_number || '—'}</div>
+        <div class="meta-val">#${data.issue_number || issueNo}</div>
       </div>
       <div class="meta-cell">
         <div class="meta-label">Tests</div>
