@@ -791,17 +791,6 @@ select {
           </div>
         </div>
 
-        <button type="button" class="adv-toggle" id="adv-toggle">
-          <svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="1.5,1.5 5.5,5.5 1.5,9.5"/></svg>
-          Advanced
-        </button>
-        <div class="adv-body" id="adv-body">
-          <div class="field" style="margin-bottom:0; margin-top:0">
-            <label for="api-url">API Base URL</label>
-            <input type="text" id="api-url" placeholder="defaults to this server">
-          </div>
-        </div>
-
         <button type="submit" class="btn-run" id="run-btn">
           Run pipeline
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -905,12 +894,6 @@ function fillModels(p) {
 document.getElementById('btn-groq').addEventListener('click', () => setProvider('groq'));
 document.getElementById('btn-openai').addEventListener('click', () => setProvider('openai'));
 fillModels('groq');
-
-/* ── Advanced ───────────────────────────────────────────────────────────── */
-document.getElementById('adv-toggle').addEventListener('click', function() {
-  this.classList.toggle('open');
-  document.getElementById('adv-body').classList.toggle('open');
-});
 
 /* ── Reveal toggles ─────────────────────────────────────────────────────── */
 document.querySelectorAll('.reveal-btn').forEach(btn => {
@@ -1022,7 +1005,7 @@ async function runPipeline() {
   const llmKey  = document.getElementById('llm-key').value.trim();
   const ghToken = document.getElementById('gh-token').value.trim();
   const model   = document.getElementById('model').value;
-  const apiBase = (document.getElementById('api-url').value.trim() || window.location.origin).replace(/\/$/, '');
+  const apiBase = window.location.origin;
 
   if (!repoUrl || !issueNo || !llmKey || !ghToken) {
     const card = document.getElementById('form-card');
