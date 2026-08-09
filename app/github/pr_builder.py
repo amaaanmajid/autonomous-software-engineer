@@ -1,15 +1,18 @@
 import logging
 
-from app.github.client import get_github_client
+from app.github.client import GitHubClient, get_github_client
 from app.models.pr import PRDraft
 
 logger = logging.getLogger(__name__)
 
 
 class PRBuilder:
+    def __init__(self, github_token: str = "") -> None:
+        self._github_token = github_token
+
     def create_pr(self, draft: PRDraft) -> PRDraft:
         """Create a GitHub pull request. Returns draft unchanged if GitHub is unavailable."""
-        client = get_github_client()
+        client = GitHubClient(github_token=self._github_token) if self._github_token else get_github_client()
         if not client.available:
             logger.warning("GitHub not configured — skipping PR creation. Draft returned as-is.")
             return draft

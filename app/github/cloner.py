@@ -25,7 +25,7 @@ def _repo_name_from_url(url: str) -> str:
 
 
 class RepoCloner:
-    def clone_or_pull(self, github_url: str) -> str:
+    def clone_or_pull(self, github_url: str, github_token: str = "") -> str:
         """
         Clone the repo if not already present, otherwise git pull.
         Returns the absolute local path to the cloned repo.
@@ -40,8 +40,14 @@ class RepoCloner:
             logger.info("Removing existing clone at %s — re-cloning fresh", repo_path)
             shutil.rmtree(repo_path)
 
+        # Inject token into URL so clone + push are authenticated
+        clone_url = github_url
+        token = github_token or settings.github_token
+        if token and "github.com" in github_url:
+            clone_url = re.sub(r"https://", f"https://{token}@", github_url)
+
         logger.info("Cloning %s → %s", github_url, repo_path)
-        git.Repo.clone_from(github_url, repo_path)
+        git.Repo.clone_from(clone_url, repo_path)
 
         logger.info("Repo ready at %s", repo_path)
         return str(repo_path)

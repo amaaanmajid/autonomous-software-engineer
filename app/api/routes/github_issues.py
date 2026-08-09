@@ -13,17 +13,22 @@ from pydantic import BaseModel
 from app.agents.indexing_agent import RepositoryIndexingAgent
 from app.github.client import GitHubClient
 from app.github.cloner import RepoCloner
+from app.llm import get_llm
 from app.models.issue import IssueInput
 from app.models.pr import PRDraft
-from app.workflow.graph import compiled_graph
+from app.workflow.graph import build_graph
 
 router = APIRouter(prefix="/process-github-issue", tags=["github-issues"])
 logger = logging.getLogger(__name__)
 
 
 class ProcessGitHubIssueRequest(BaseModel):
-    github_url: str   # e.g. https://github.com/owner/repo
+    github_url: str
     issue_number: int
+    llm_provider: str = "groq"          # "openai" or "groq"
+    llm_api_key: str = ""               # user's own API key
+    llm_model: str = ""                 # e.g. gpt-4o-mini or llama-3.3-70b-versatile
+    github_token: str = ""              # user's GitHub PAT
 
 
 class ProcessGitHubIssueResponse(BaseModel):
@@ -50,18 +55,26 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
     5. Run tests in Docker → open PR if tests pass
     """
     try:
+        # Resolve github token — request overrides .env
+        from app.config import settings as app_settings
+        github_token = request.github_token or app_settings.github_token
+
         # Step 1: fetch issue from GitHub
-        gh = GitHubClient()
+        gh = GitHubClient(github_token=github_token)
         fetched = gh.fetch_issue(request.github_url, request.issue_number)
         logger.info("Fetched issue #%d: %s", fetched.number, fetched.title)
 
         # Step 2: clone or pull repo
-        repository_path = RepoCloner().clone_or_pull(request.github_url)
+        repository_path = RepoCloner().clone_or_pull(request.github_url, github_token=github_token)
         logger.info("Repo ready at %s", repository_path)
 
         # Step 3: index repo
         RepositoryIndexingAgent().index_repository(repository_path)
         logger.info("Indexing complete")
+
+        # Build per-request graph with user's LLM
+        llm = get_llm(request.llm_provider, request.llm_api_key, request.llm_model)
+        graph = build_graph(llm=llm, github_token=github_token)
 
         # Step 4: run workflow
         issue = IssueInput(
@@ -84,7 +97,7 @@ async def process_github_issue(request: ProcessGitHubIssueRequest) -> ProcessGit
         }
         config = {"configurable": {"thread_id": f"gh-issue-{fetched.number}"}}
         logger.info("Starting workflow for issue #%d", fetched.number)
-        final_state = await compiled_graph.ainvoke(initial_state, config=config)
+        final_state = await graph.ainvoke(initial_state, config=config)
 
         pr: PRDraft | None = final_state.get("pr_draft")
         test_result = final_state.get("test_result")

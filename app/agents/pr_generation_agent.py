@@ -36,9 +36,9 @@ Respond ONLY with JSON:
 
 
 class PRGenerationAgent:
-    def __init__(self, llm: BaseChatModel, pr_builder: PRBuilder | None = None) -> None:
+    def __init__(self, llm: BaseChatModel, pr_builder: PRBuilder | None = None, github_token: str = "") -> None:
         self._llm = llm
-        self._pr_builder = pr_builder or PRBuilder()
+        self._pr_builder = pr_builder or PRBuilder(github_token=github_token)
 
     @llm_retry
     def generate_pr(

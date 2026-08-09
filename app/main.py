@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import github_issues, indexing, issues, pr, testing
 from app.config import configure_logging, settings
@@ -38,6 +40,14 @@ app.include_router(issues.router)
 app.include_router(testing.router)
 app.include_router(pr.router)
 app.include_router(github_issues.router)
+
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_ui() -> FileResponse:
+    return FileResponse("app/static/index.html")
 
 
 @app.get("/health", tags=["health"])

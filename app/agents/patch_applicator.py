@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class PatchApplicator:
+    def __init__(self, github_token: str = "") -> None:
+        self._github_token = github_token or settings.github_token
+
     def apply(self, patch_set: PatchSet, repository_path: str) -> PatchSet:
         """
         Apply all patches to the repository on a new branch.
@@ -30,15 +33,31 @@ class PatchApplicator:
         # Create fix branch from current HEAD (usually main)
         branch_name = self._create_branch(repo, patch_set)
 
-        # Apply each patch
+        # Apply each patch, track how many were skipped
+        skipped = 0
         for patch in patch_set.patches:
-            self._apply_single_patch(patch, repo_path)
+            applied = self._apply_single_patch(patch, repo_path)
+            if not applied:
+                skipped += 1
+
+        # Guard: if nothing actually changed on disk, abort — don't raise an empty PR
+        if not repo.is_dirty():
+            logger.error(
+                "No patches were applied (%d/%d skipped) — aborting commit to avoid empty PR",
+                skipped, len(patch_set.patches),
+            )
+            repo.git.checkout("main")
+            repo.git.branch("-D", branch_name)
+            raise ValueError(
+                f"All {len(patch_set.patches)} patch(es) were skipped — "
+                "LLM original_code did not match file content. Retry with a cleaner prompt."
+            )
 
         # Commit all changes
         repo.git.add(A=True)
         repo.git.commit(
             "-m",
-            f"fix: {patch_set.description}\n\nApplied {len(patch_set.patches)} patch(es) across {patch_set.total_files} file(s).",
+            f"fix: {patch_set.description}\n\nApplied {len(patch_set.patches) - skipped}/{len(patch_set.patches)} patch(es) across {patch_set.total_files} file(s).",
         )
 
         # Push branch to origin so GitHub can create a PR from it
@@ -52,17 +71,17 @@ class PatchApplicator:
             applied=True,
             applied_at=datetime.now(UTC).isoformat(),
             branch_name=branch_name,
+            patches_skipped=skipped,
         )
 
     def _push_branch(self, repo: git.Repo, branch_name: str) -> None:
-        if not settings.github_token:
+        if not self._github_token:
             logger.warning("No GITHUB_TOKEN — skipping push (PR creation will fail)")
             return
-        # Inject token into remote URL so push is authenticated
         origin_url = repo.remotes.origin.url
         if "github.com" in origin_url and "@" not in origin_url:
             authed_url = origin_url.replace(
-                "https://", f"https://{settings.github_token}@"
+                "https://", f"https://{self._github_token}@"
             )
             repo.remotes.origin.set_url(authed_url)
         repo.git.push("origin", branch_name)
@@ -76,7 +95,8 @@ class PatchApplicator:
         logger.info("Created branch: %s", branch_name)
         return branch_name
 
-    def _apply_single_patch(self, patch: FilePatch, repo_path: Path) -> None:
+    def _apply_single_patch(self, patch: FilePatch, repo_path: Path) -> bool:
+        """Apply a single patch. Returns True if applied, False if skipped."""
         file_path = repo_path / patch.file_path
         if not file_path.exists():
             raise FileNotFoundError(f"File not found for patching: {file_path}")
@@ -89,7 +109,7 @@ class PatchApplicator:
                     "Skipping REPLACE in %s — original_code not found (LLM hallucination)",
                     patch.file_path,
                 )
-                return
+                return False
             new_content = content.replace(patch.original_code, patch.new_code, 1)
 
         elif patch.operation == PatchOperation.INSERT:
@@ -110,3 +130,4 @@ class PatchApplicator:
 
         file_path.write_text(new_content, encoding="utf-8")
         logger.info("Patched: %s (%s)", patch.file_path, patch.operation)
+        return True

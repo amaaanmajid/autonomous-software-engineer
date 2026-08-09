@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     )
 
     # LLM
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "codellama:7b"
 
     # GitHub
     github_token: str = ""
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     workspace_dir: Path = Path("/tmp/ase_workspace")
     faiss_index_path: Path = Path("./data/faiss_index")
     symbol_index_path: Path = Path("./data/symbol_index.json")
+    call_graph_path: Path = Path("./data/call_graph.json")
 
     # Docker
     docker_image_name: str = "ase-test-runner"

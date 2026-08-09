@@ -20,12 +20,13 @@ class FetchedIssue:
 
 
 class GitHubClient:
-    def __init__(self) -> None:
-        if not settings.github_token:
+    def __init__(self, github_token: str = "") -> None:
+        token = github_token or settings.github_token
+        if not token:
             logger.warning("GITHUB_TOKEN not set — GitHub operations will be skipped")
             self._gh: Github | None = None
         else:
-            self._gh = Github(settings.github_token)
+            self._gh = Github(token)
 
     def get_repo(self, repo_slug: str = "") -> Repository | None:
         if not self._gh:

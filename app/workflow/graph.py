@@ -38,16 +38,16 @@ from app.vectorstore.faiss_store import FAISSStore
 logger = logging.getLogger(__name__)
 
 
-def build_graph() -> StateGraph:
+def build_graph(llm=None, github_token: str = "") -> StateGraph:
     """Construct and compile the LangGraph StateGraph."""
 
     # ── Shared services ──────────────────────────────────────────────────────
-    llm = get_llm()
+    llm = llm or get_llm()
     analysis_agent = IssueAnalysisAgent(llm)
     fix_agent = CodeFixAgent(llm)
-    applicator = PatchApplicator()
+    applicator = PatchApplicator(github_token=github_token)
     test_runner = DockerTestRunner()
-    pr_agent = PRGenerationAgent(llm)
+    pr_agent = PRGenerationAgent(llm, github_token=github_token)
 
     # ── Node functions ────────────────────────────────────────────────────────
 

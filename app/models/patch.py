@@ -26,3 +26,4 @@ class PatchSet(BaseModel):
     applied: bool = False
     applied_at: str | None = None
     branch_name: str | None = None
+    patches_skipped: int = 0  # how many REPLACE patches were skipped due to mismatch

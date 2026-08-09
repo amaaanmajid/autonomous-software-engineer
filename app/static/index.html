@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — Your Autonomous SWE</title>
+<style>
+/* ── Geist font (system fallback chain that matches it well) ────────────── */
+:root {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Dark surface system */
+  --bg:         #0a0a0a;
+  --s1:         #18181b;
+  --s2:         #27272a;
+  --s3:         #3f3f46;
+  --s4:         #52525b;
+
+  --t1:         #fafafa;
+  --t2:         #a1a1aa;
+  --t3:         #71717a;
+  --t4:         #3f3f46;
+
+  --blue:       #3b82f6;
+  --blue-dim:   rgba(59,130,246,0.12);
+  --blue-ring:  rgba(59,130,246,0.25);
+  --green:      #22c55e;
+  --green-dim:  rgba(34,197,94,0.12);
+  --red:        #ef4444;
+  --red-dim:    rgba(239,68,68,0.12);
+  --amber:      #f59e0b;
+  --amber-dim:  rgba(245,158,11,0.12);
+  --purple:     #a855f7;
+  --purple-dim: rgba(168,85,247,0.12);
+
+  --radius: 8px;
+  --radius-sm: 5px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:   #f4f4f5;
+    --s1:   #ffffff;
+    --s2:   #f4f4f5;
+    --s3:   #e4e4e7;
+    --s4:   #d4d4d8;
+    --t1:   #09090b;
+    --t2:   #52525b;
+    --t3:   #71717a;
+    --t4:   #a1a1aa;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:   #0a0a0a;
+  --s1:   #18181b;
+  --s2:   #27272a;
+  --s3:   #3f3f46;
+  --s4:   #52525b;
+  --t1:   #fafafa;
+  --t2:   #a1a1aa;
+  --t3:   #71717a;
+  --t4:   #3f3f46;
+}
+
+:root[data-theme="light"] {
+  --bg:   #f4f4f5;
+  --s1:   #ffffff;
+  --s2:   #f4f4f5;
+  --s3:   #e4e4e7;
+  --s4:   #d4d4d8;
+  --t1:   #09090b;
+  --t2:   #52525b;
+  --t3:   #71717a;
+  --t4:   #a1a1aa;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--t1);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+@media (min-width: 900px) {
+  .app {
+    grid-template-columns: 380px 1fr;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+  .col-left  { overflow-y: auto; border-right: 1px solid var(--s3); }
+  .col-right { overflow-y: auto; }
+}
+
+.col-left  { padding: 36px 28px 60px; }
+.col-right { padding: 36px 28px 60px; background: var(--bg); }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header { margin-bottom: 32px; }
+
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.logo-mark {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-dim);
+  border: 1px solid rgba(59,130,246,0.2);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+.theme-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--s3);
+  color: var(--t2);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+  font-size: 13px;
+  line-height: 1;
+}
+.theme-btn:hover { border-color: var(--s4); color: var(--t1); }
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--t1);
+  margin-bottom: 5px;
+}
+
+.header p {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.55;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-bottom: 14px;
+}
+
+.card-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 18px;
+}
+
+/* ── Form ────────────────────────────────────────────────────────────────── */
+.field { margin-bottom: 14px; }
+.field:last-of-type { margin-bottom: 0; }
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t2);
+  margin-bottom: 5px;
+}
+
+label .hint {
+  font-weight: 400;
+  color: var(--t3);
+}
+
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 10px;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+select {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--t1);
+  background: var(--s2);
+  border: 1px solid var(--s3);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus, select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-ring);
+}
+
+input::placeholder { color: var(--t4); }
+
+.input-wrap { position: relative; }
+input.pr { padding-right: 38px; }
+
+.reveal-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  padding: 0 11px;
+  background: none;
+  border: none;
+  color: var(--t3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.reveal-btn:hover { color: var(--t2); }
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5' viewBox='0 0 9 5'%3E%3Cpath d='M1 1l3.5 3L8 1' stroke='%2371717a' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+/* ── Segmented provider toggle ─────────────────────────────────────────── */
+.seg-ctrl {
+  display: flex;
+  background: var(--s2);
+  border: 1px solid var(--s3);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 2px;
+}
+
+.seg-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--t3);
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.seg-btn.active {
+  background: var(--s3);
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.seg-btn:not(.active):hover { color: var(--t2); }
+
+/* ── Advanced ───────────────────────────────────────────────────────────── */
+.adv-toggle {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: var(--t3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s;
+}
+.adv-toggle:hover { color: var(--t2); }
+.adv-toggle svg { transition: transform 0.2s; }
+.adv-toggle.open svg { transform: rotate(90deg); }
+
+.adv-body {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--s3);
+  display: none;
+}
+.adv-body.open { display: block; }
+
+/* ── Submit ─────────────────────────────────────────────────────────────── */
+.btn-run {
+  width: 100%;
+  background: var(--t1);
+  color: var(--bg);
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: opacity 0.15s;
+}
+.btn-run:hover:not(:disabled) { opacity: 0.85; }
+.btn-run:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-ghost {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--s3);
+  color: var(--t2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 16px;
+}
+.btn-ghost:hover { border-color: var(--s4); color: var(--t1); }
+
+/* ── Idle placeholder ───────────────────────────────────────────────────── */
+.right-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 12px;
+  text-align: center;
+}
+.right-placeholder .icon { font-size: 34px; opacity: 0.2; }
+.right-placeholder p { font-size: 13px; color: var(--t3); max-width: 200px; line-height: 1.6; }
+
+/* ── Pipeline stepper ───────────────────────────────────────────────────── */
+.stepper { display: flex; flex-direction: column; }
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: -14px;
+  width: 1px;
+  background: var(--s3);
+  transition: background 0.4s;
+}
+.step.done:not(:last-child)::after { background: var(--green); }
+
+.step-dot-wrap {
+  width: 29px;
+  height: 29px;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 1;
+  margin-top: 4px;
+}
+
+.step-dot-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px dashed transparent;
+  transition: border-color 0.2s;
+}
+
+.step.active .step-dot-wrap::before {
+  border-color: var(--blue);
+  animation: ring-spin 1.2s linear infinite;
+}
+
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+
+.step-dot {
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  border: 1px solid var(--s3);
+  background: var(--s2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.step.pending .step-dot { opacity: 0.4; }
+
+.step.active .step-dot {
+  border-color: var(--blue);
+  background: var(--blue-dim);
+  opacity: 1;
+}
+
+.step.done .step-dot {
+  border-color: var(--green);
+  background: var(--green-dim);
+  font-size: 11px;
+  opacity: 1;
+  animation: dot-pop 0.3s ease-out;
+}
+
+.step.error .step-dot {
+  border-color: var(--red);
+  background: var(--red-dim);
+  opacity: 1;
+}
+
+@keyframes dot-pop {
+  0%   { transform: scale(0.9); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.step-content {
+  flex: 1;
+  padding: 6px 0 20px;
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t3);
+  letter-spacing: -0.01em;
+  transition: color 0.25s;
+  line-height: 1.3;
+}
+
+.step.active .step-label { color: var(--t1); }
+.step.done   .step-label { color: var(--t2); }
+.step.error  .step-label { color: var(--red); }
+
+.step-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--t4);
+  margin-top: 2px;
+  transition: color 0.25s;
+}
+
+.step.active .step-meta { color: var(--blue); }
+.step.done   .step-meta { color: var(--green); }
+
+/* Terminal log block */
+.log-block {
+  margin-top: 10px;
+  background: #0d0d0d;
+  border: 1px solid var(--s3);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #d4d4d8;
+  max-height: 110px;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+
+.log-line { display: block; }
+
+.log-line.new {
+  animation: fade-in-up 0.15s ease-out;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.log-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  background: var(--blue);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Panel header ─────────────────────────────────────────────────────── */
+.panel-header { margin-bottom: 24px; }
+.panel-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--t1);
+  margin-bottom: 4px;
+}
+.panel-sub { font-size: 12.5px; color: var(--t2); }
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+.result-section { animation: result-in 0.25s ease-out both; }
+
+@keyframes result-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pr-card {
+  border-left: 3px solid var(--purple);
+  background: var(--s1);
+  border-top: 1px solid var(--s3);
+  border-right: 1px solid var(--s3);
+  border-bottom: 1px solid var(--s3);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  display: block;
+  transition: opacity 0.15s;
+}
+.pr-card:hover { opacity: 0.82; }
+
+.pr-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--purple);
+  margin-bottom: 5px;
+}
+
+.pr-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--t1);
+  margin-bottom: 7px;
+}
+
+.pr-link {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--purple);
+  word-break: break-all;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.meta-cell {
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 5px;
+}
+
+.meta-val {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t1);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.badge.green { background: var(--green-dim); color: var(--green); }
+.badge.red   { background: var(--red-dim);   color: var(--red); }
+.badge.amber { background: var(--amber-dim); color: var(--amber); }
+
+.root-cause {
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-left: 2px solid var(--amber);
+  border-radius: var(--radius-sm);
+  padding: 13px 15px;
+  font-size: 13px;
+  color: var(--t1);
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.file-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--t2);
+}
+
+.file-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.err-box {
+  background: var(--red-dim);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: var(--radius-sm);
+  padding: 13px 15px;
+  font-size: 13px;
+  color: var(--red);
+  line-height: 1.55;
+}
+
+.sec-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 8px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--s3);
+  margin: 16px 0;
+}
+
+[hidden] { display: none !important; }
+
+@keyframes shake {
+  0%,100% { transform:translateX(0); }
+  20%,60%  { transform:translateX(-6px); }
+  40%,80%  { transform:translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .col-left, .col-right { padding: 24px 18px 48px; }
+  .meta-grid { grid-template-columns: 1fr; }
+  .row-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Left column: form ──────────────────────────────────────────────── -->
+  <div class="col-left">
+
+    <header class="header">
+      <div class="header-top">
+        <span class="logo-mark">Forge</span>
+        <button class="theme-btn" id="theme-btn" aria-label="Toggle theme">
+          <svg id="ico-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>
+          <svg id="ico-sun"  width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+      </div>
+      <h1>Forge</h1>
+      <p style="font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--t3);margin-bottom:10px;">Your autonomous software engineer</p>
+      <p>Give it a GitHub issue. It reads the code, generates a fix, and opens a pull request.</p>
+    </header>
+
+    <div class="card" id="form-card">
+      <div class="card-label">New run</div>
+
+      <form id="form" novalidate>
+
+        <div class="field">
+          <label>LLM Provider</label>
+          <div class="seg-ctrl">
+            <button type="button" class="seg-btn active" data-p="groq" id="btn-groq">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+              Groq — free
+            </button>
+            <button type="button" class="seg-btn" data-p="openai" id="btn-openai">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              OpenAI
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="model">Model</label>
+          <select id="model"></select>
+        </div>
+
+        <div class="field">
+          <label for="llm-key">LLM API Key <span class="hint">(never stored)</span></label>
+          <div class="input-wrap">
+            <input type="password" id="llm-key" class="pr" placeholder="gsk_…" autocomplete="off">
+            <button type="button" class="reveal-btn" data-for="llm-key">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field row-2">
+          <div>
+            <label for="repo-url">Repository URL</label>
+            <input type="text" id="repo-url" placeholder="https://github.com/owner/repo" autocomplete="off" spellcheck="false">
+          </div>
+          <div>
+            <label for="issue-no">Issue #</label>
+            <input type="number" id="issue-no" placeholder="42" min="1">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="gh-token">GitHub Token <span class="hint">(repo + PR scopes)</span></label>
+          <div class="input-wrap">
+            <input type="password" id="gh-token" class="pr" placeholder="ghp_…" autocomplete="off">
+            <button type="button" class="reveal-btn" data-for="gh-token">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="adv-toggle" id="adv-toggle">
+          <svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="1.5,1.5 5.5,5.5 1.5,9.5"/></svg>
+          Advanced
+        </button>
+        <div class="adv-body" id="adv-body">
+          <div class="field" style="margin-bottom:0; margin-top:0">
+            <label for="api-url">API Base URL</label>
+            <input type="text" id="api-url" value="http://localhost:8000">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-run" id="run-btn">
+          Run pipeline
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+
+      </form>
+    </div>
+
+  </div>
+
+  <!-- ── Right column: pipeline + results ──────────────────────────────── -->
+  <div class="col-right" id="right-col">
+
+    <div class="right-placeholder" id="right-idle">
+      <div class="icon">⚡</div>
+      <p>Fill in the form and run the pipeline to see progress here.</p>
+    </div>
+
+    <div id="right-pipeline" hidden>
+      <div class="panel-header">
+        <div class="panel-title">Running</div>
+        <div class="panel-sub" id="pipeline-sub">Initialising…</div>
+      </div>
+      <div class="stepper" id="stepper"></div>
+    </div>
+
+    <div id="right-results" hidden>
+      <div class="panel-header">
+        <div class="panel-title" id="res-title">Done</div>
+        <div class="panel-sub" id="res-sub"></div>
+      </div>
+      <div id="res-body"></div>
+      <button class="btn-ghost" id="again-btn">Run another issue</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const MODELS = {
+  groq: [
+    { v:'llama-3.3-70b-versatile', l:'Llama 3.3 70B — Recommended' },
+    { v:'llama-3.1-8b-instant',    l:'Llama 3.1 8B — Fast' },
+    { v:'mixtral-8x7b-32768',      l:'Mixtral 8x7B' },
+  ],
+  openai: [
+    { v:'gpt-4o-mini', l:'GPT-4o Mini — Recommended' },
+    { v:'gpt-4o',      l:'GPT-4o' },
+    { v:'gpt-4.1',     l:'GPT-4.1' },
+  ],
+};
+
+const STEPS = [
+  { icon:'🔍', label:'Fetch issue',         meta:'GitHub API' },
+  { icon:'📦', label:'Clone repository',    meta:'git clone' },
+  { icon:'🌳', label:'Parse & index code',  meta:'Tree-sitter + FAISS' },
+  { icon:'🧠', label:'Analyse issue',       meta:'LLM — reasoning…' },
+  { icon:'🎯', label:'Retrieve context',    meta:'Semantic search' },
+  { icon:'⚙️', label:'Generate fix',        meta:'LLM — generating…' },
+  { icon:'🔧', label:'Apply patch',         meta:'git branch + commit' },
+  { icon:'🧪', label:'Run tests',           meta:'Docker + pytest' },
+  { icon:'🚀', label:'Open pull request',   meta:'LLM — writing PR…' },
+];
+
+const STEP_START_MS = [0, 1500, 4000, 8000, 15000, 20000, 26000, 30000, 40000];
+
+/* ── Theme ──────────────────────────────────────────────────────────────── */
+const root = document.documentElement;
+(function() {
+  const saved = localStorage.getItem('ase-theme');
+  applyTheme(saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+})();
+
+function applyTheme(t) {
+  root.dataset.theme = t;
+  localStorage.setItem('ase-theme', t);
+  document.getElementById('ico-moon').style.display = t === 'dark' ? 'block' : 'none';
+  document.getElementById('ico-sun').style.display  = t === 'light' ? 'block' : 'none';
+}
+
+document.getElementById('theme-btn').addEventListener('click', () =>
+  applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+/* ── Provider ───────────────────────────────────────────────────────────── */
+let provider = 'groq';
+
+function setProvider(p) {
+  provider = p;
+  document.getElementById('btn-groq').classList.toggle('active', p === 'groq');
+  document.getElementById('btn-openai').classList.toggle('active', p === 'openai');
+  fillModels(p);
+  document.getElementById('llm-key').placeholder = p === 'groq' ? 'gsk_…' : 'sk-…';
+}
+
+function fillModels(p) {
+  const sel = document.getElementById('model');
+  sel.innerHTML = MODELS[p].map(m => `<option value="${m.v}">${m.l}</option>`).join('');
+}
+
+document.getElementById('btn-groq').addEventListener('click', () => setProvider('groq'));
+document.getElementById('btn-openai').addEventListener('click', () => setProvider('openai'));
+fillModels('groq');
+
+/* ── Advanced ───────────────────────────────────────────────────────────── */
+document.getElementById('adv-toggle').addEventListener('click', function() {
+  this.classList.toggle('open');
+  document.getElementById('adv-body').classList.toggle('open');
+});
+
+/* ── Reveal toggles ─────────────────────────────────────────────────────── */
+document.querySelectorAll('.reveal-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inp = document.getElementById(btn.dataset.for);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+});
+
+/* ── Stepper ────────────────────────────────────────────────────────────── */
+let stepTimers = [];
+
+const LOG_DATA = [
+  ['Sending request to LLM…', 'Received response (842 tokens)', 'Parsing structured output…'],
+  ['Loading FAISS index from disk…', 'Embedding query vector (384-dim)', 'Top-5 symbols retrieved'],
+  ['Writing PR title and description…', 'Calling GitHub API…', 'Pull request created successfully'],
+];
+
+function buildStepper() {
+  document.getElementById('stepper').innerHTML = STEPS.map((s, i) => `
+    <div class="step pending" id="step-${i}">
+      <div class="step-dot-wrap"><div class="step-dot">${s.icon}</div></div>
+      <div class="step-content">
+        <div class="step-label">${s.label}</div>
+        <div class="step-meta" id="step-meta-${i}">${s.meta}</div>
+        <div class="log-block" id="step-log-${i}" style="display:none"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function startStepper() {
+  stepTimers.forEach(clearTimeout);
+  stepTimers = [];
+  buildStepper();
+
+  STEPS.forEach((_, i) => {
+    stepTimers.push(setTimeout(() => activateStep(i), STEP_START_MS[i]));
+    if (i > 0) stepTimers.push(setTimeout(() => completeStep(i - 1), STEP_START_MS[i]));
+  });
+}
+
+function activateStep(i) {
+  const el = document.getElementById('step-' + i);
+  if (!el) return;
+  el.className = 'step active';
+  document.getElementById('pipeline-sub').textContent = STEPS[i].label + '…';
+  if ([3, 5, 8].includes(i)) {
+    const log = document.getElementById('step-log-' + i);
+    log.style.display = 'block';
+    const lines = i === 3 ? LOG_DATA[0] : i === 5 ? LOG_DATA[1] : LOG_DATA[2];
+    streamLog(log, lines);
+  }
+}
+
+function streamLog(logEl, lines) {
+  let idx = 0;
+  function next() {
+    if (idx >= lines.length) return;
+    const div = document.createElement('div');
+    div.className = 'log-line new';
+    div.textContent = '› ' + lines[idx];
+    if (idx === lines.length - 1) {
+      const cur = document.createElement('span');
+      cur.className = 'log-cursor';
+      div.appendChild(cur);
+    }
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+    idx++;
+    setTimeout(next, 600 + Math.random() * 500);
+  }
+  next();
+}
+
+function completeStep(i) {
+  const el = document.getElementById('step-' + i);
+  if (!el) return;
+  el.className = 'step done';
+  el.querySelector('.step-dot').textContent = '✓';
+  document.getElementById('step-meta-' + i).textContent = 'done';
+  document.getElementById('step-log-' + i).style.display = 'none';
+}
+
+function finishStepper(success) {
+  stepTimers.forEach(clearTimeout);
+  stepTimers = [];
+  STEPS.forEach((_, i) => {
+    const el = document.getElementById('step-' + i);
+    if (!el) return;
+    el.className = 'step ' + (success ? 'done' : 'error');
+    el.querySelector('.step-dot').textContent = success ? '✓' : '✗';
+  });
+}
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+  runPipeline();
+});
+
+async function runPipeline() {
+  const repoUrl = document.getElementById('repo-url').value.trim();
+  const issueNo = parseInt(document.getElementById('issue-no').value, 10);
+  const llmKey  = document.getElementById('llm-key').value.trim();
+  const ghToken = document.getElementById('gh-token').value.trim();
+  const model   = document.getElementById('model').value;
+  const apiBase = document.getElementById('api-url').value.trim().replace(/\/$/, '');
+
+  if (!repoUrl || !issueNo || !llmKey || !ghToken) {
+    const card = document.getElementById('form-card');
+    card.style.animation = 'none';
+    card.offsetHeight;
+    card.style.animation = 'shake 0.35s ease';
+    return;
+  }
+
+  show('right-pipeline');
+  startStepper();
+
+  const payload = {
+    github_url:   repoUrl,
+    issue_number: issueNo,
+    llm_provider: provider,
+    llm_api_key:  llmKey,
+    llm_model:    model,
+    github_token: ghToken,
+  };
+
+  try {
+    const res = await fetch(apiBase + '/process-github-issue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    const ok = !data.error || !!data.pr_url;
+    finishStepper(ok);
+    await sleep(700);
+    show('right-results');
+    renderResults(data);
+  } catch (err) {
+    finishStepper(false);
+    await sleep(700);
+    show('right-results');
+    renderError(err.message || 'Cannot reach ' + apiBase + '. Is the server running?');
+  }
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+function renderResults(data) {
+  const failed = data.error && !data.pr_url;
+  document.getElementById('res-title').textContent = failed ? 'Pipeline failed' : 'Pull request opened';
+  document.getElementById('res-sub').textContent   = failed
+    ? (data.error || '').slice(0, 120)
+    : 'The fix has been applied and a PR has been raised.';
+
+  let html = '';
+
+  if (data.pr_url) {
+    html += `<div class="result-section">
+      <a class="pr-card" href="${esc(data.pr_url)}" target="_blank" rel="noopener">
+        <div class="pr-eyebrow">Pull Request${data.pr_number ? ' #' + data.pr_number : ''}</div>
+        <div class="pr-title">${esc(data.pr_title || 'Fix applied')}</div>
+        <div class="pr-link">${esc(data.pr_url)}</div>
+      </a>
+    </div>`;
+  }
+
+  if (data.root_cause) {
+    html += `<div class="result-section" style="animation-delay:.08s">
+      <div class="sec-lbl">Root Cause</div>
+      <div class="root-cause">${esc(data.root_cause)}</div>
+    </div>`;
+  }
+
+  html += `<div class="result-section" style="animation-delay:.16s">
+    <div class="meta-grid">
+      <div class="meta-cell">
+        <div class="meta-label">Issue</div>
+        <div class="meta-val">#${data.issue_number || '—'}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Tests</div>
+        <div class="meta-val">
+          <span class="badge ${data.test_passed ? 'green' : 'amber'}">
+            ${data.test_passed ? '✓ Passed' : '⚠ Skipped'}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  if (data.files_changed && data.files_changed.length) {
+    html += `<div class="result-section" style="animation-delay:.24s">
+      <div class="sec-lbl">Files Changed</div>
+      <div class="files-list">
+        ${data.files_changed.map(f =>
+          `<div class="file-chip"><span class="file-dot"></span>${esc(f)}</div>`
+        ).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (failed) {
+    html += `<div class="result-section err-box" style="animation-delay:.08s">${esc(data.error)}</div>`;
+  }
+
+  document.getElementById('res-body').innerHTML = html;
+}
+
+function renderError(msg) {
+  document.getElementById('res-title').textContent = 'Connection error';
+  document.getElementById('res-sub').textContent   = '';
+  document.getElementById('res-body').innerHTML    =
+    `<div class="result-section err-box">${esc(msg)}</div>`;
+}
+
+document.getElementById('again-btn').addEventListener('click', () => show('right-idle'));
+
+/* ── Helpers ────────────────────────────────────────────────────────────── */
+function show(id) {
+  ['right-idle','right-pipeline','right-results'].forEach(s =>
+    document.getElementById(s).hidden = s !== id
+  );
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+
+</body>
+</html>
