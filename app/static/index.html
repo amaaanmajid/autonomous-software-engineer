@@ -904,14 +904,6 @@ document.querySelectorAll('.reveal-btn').forEach(btn => {
 });
 
 /* ── Stepper ────────────────────────────────────────────────────────────── */
-let stepTimers = [];
-
-const LOG_DATA = [
-  ['Sending request to LLM…', 'Received response (842 tokens)', 'Parsing structured output…'],
-  ['Loading FAISS index from disk…', 'Embedding query vector (384-dim)', 'Top-5 symbols retrieved'],
-  ['Writing PR title and description…', 'Calling GitHub API…', 'Pull request created successfully'],
-];
-
 function buildStepper() {
   document.getElementById('stepper').innerHTML = STEPS.map((s, i) => `
     <div class="step pending" id="step-${i}">
@@ -919,21 +911,9 @@ function buildStepper() {
       <div class="step-content">
         <div class="step-label">${s.label}</div>
         <div class="step-meta" id="step-meta-${i}">${s.meta}</div>
-        <div class="log-block" id="step-log-${i}" style="display:none"></div>
       </div>
     </div>
   `).join('');
-}
-
-function startStepper() {
-  stepTimers.forEach(clearTimeout);
-  stepTimers = [];
-  buildStepper();
-
-  STEPS.forEach((_, i) => {
-    stepTimers.push(setTimeout(() => activateStep(i), STEP_START_MS[i]));
-    if (i > 0) stepTimers.push(setTimeout(() => completeStep(i - 1), STEP_START_MS[i]));
-  });
 }
 
 function activateStep(i) {
@@ -941,32 +921,6 @@ function activateStep(i) {
   if (!el) return;
   el.className = 'step active';
   document.getElementById('pipeline-sub').textContent = STEPS[i].label + '…';
-  if ([3, 5, 8].includes(i)) {
-    const log = document.getElementById('step-log-' + i);
-    log.style.display = 'block';
-    const lines = i === 3 ? LOG_DATA[0] : i === 5 ? LOG_DATA[1] : LOG_DATA[2];
-    streamLog(log, lines);
-  }
-}
-
-function streamLog(logEl, lines) {
-  let idx = 0;
-  function next() {
-    if (idx >= lines.length) return;
-    const div = document.createElement('div');
-    div.className = 'log-line new';
-    div.textContent = '› ' + lines[idx];
-    if (idx === lines.length - 1) {
-      const cur = document.createElement('span');
-      cur.className = 'log-cursor';
-      div.appendChild(cur);
-    }
-    logEl.appendChild(div);
-    logEl.scrollTop = logEl.scrollHeight;
-    idx++;
-    setTimeout(next, 600 + Math.random() * 500);
-  }
-  next();
 }
 
 function completeStep(i) {
@@ -975,21 +929,19 @@ function completeStep(i) {
   el.className = 'step done';
   el.querySelector('.step-dot').textContent = '✓';
   document.getElementById('step-meta-' + i).textContent = 'done';
-  document.getElementById('step-log-' + i).style.display = 'none';
 }
 
 function finishStepper(success) {
-  stepTimers.forEach(clearTimeout);
-  stepTimers = [];
   STEPS.forEach((_, i) => {
     setTimeout(() => {
       const el = document.getElementById('step-' + i);
       if (!el) return;
-      el.className = 'step ' + (success ? 'done' : 'error');
-      el.querySelector('.step-dot').textContent = success ? '✓' : '✗';
-      document.getElementById('step-meta-' + i).textContent = success ? 'done' : 'failed';
-      document.getElementById('step-log-' + i).style.display = 'none';
-    }, i * 120);
+      if (el.className === 'step pending') {
+        el.className = 'step ' + (success ? 'done' : 'error');
+        el.querySelector('.step-dot').textContent = success ? '✓' : '✗';
+        document.getElementById('step-meta-' + i).textContent = success ? 'done' : 'failed';
+      }
+    }, i * 80);
   });
 }
 
@@ -1005,7 +957,6 @@ async function runPipeline() {
   const llmKey  = document.getElementById('llm-key').value.trim();
   const ghToken = document.getElementById('gh-token').value.trim();
   const model   = document.getElementById('model').value;
-  const apiBase = window.location.origin;
 
   if (!repoUrl || !issueNo || !llmKey || !ghToken) {
     const card = document.getElementById('form-card');
@@ -1016,7 +967,7 @@ async function runPipeline() {
   }
 
   show('right-pipeline');
-  startStepper();
+  buildStepper();
 
   const payload = {
     github_url:   repoUrl,
@@ -1028,23 +979,62 @@ async function runPipeline() {
   };
 
   try {
-    const res = await fetch(apiBase + '/process-github-issue', {
+    const res = await fetch('/process-github-issue/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-    if (!data.issue_number) data.issue_number = issueNo;
-    const ok = !data.error || !!data.pr_url;
-    finishStepper(ok);
-    await sleep(700);
-    show('right-results');
-    renderResults(data);
+
+    if (!res.ok) {
+      throw new Error('Server error ' + res.status);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete last line
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let data;
+        try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (data.error && !data.done) {
+          finishStepper(false);
+          await sleep(500);
+          show('right-results');
+          renderError(data.error);
+          return;
+        }
+
+        if (data.step !== undefined) {
+          if (data.status === 'active') activateStep(data.step);
+          if (data.status === 'done')   completeStep(data.step);
+        }
+
+        if (data.done) {
+          if (!data.issue_number) data.issue_number = issueNo;
+          const ok = !data.error || !!data.pr_url;
+          finishStepper(ok);
+          await sleep(500);
+          show('right-results');
+          renderResults(data);
+          return;
+        }
+      }
+    }
   } catch (err) {
     finishStepper(false);
-    await sleep(700);
+    await sleep(500);
     show('right-results');
-    renderError(err.message || 'Cannot reach ' + apiBase + '. Is the server running?');
+    renderError(err.message || 'Connection lost. Is the server running?');
   }
 }
 
