@@ -798,7 +798,7 @@ select {
         <div class="adv-body" id="adv-body">
           <div class="field" style="margin-bottom:0; margin-top:0">
             <label for="api-url">API Base URL</label>
-            <input type="text" id="api-url" value="http://localhost:8000">
+            <input type="text" id="api-url" placeholder="defaults to this server">
           </div>
         </div>
 
@@ -1018,7 +1018,7 @@ async function runPipeline() {
   const llmKey  = document.getElementById('llm-key').value.trim();
   const ghToken = document.getElementById('gh-token').value.trim();
   const model   = document.getElementById('model').value;
-  const apiBase = document.getElementById('api-url').value.trim().replace(/\/$/, '');
+  const apiBase = (document.getElementById('api-url').value.trim() || window.location.origin).replace(/\/$/, '');
 
   if (!repoUrl || !issueNo || !llmKey || !ghToken) {
     const card = document.getElementById('form-card');
