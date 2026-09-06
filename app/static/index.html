@@ -833,9 +833,10 @@ select {
 <script>
 const MODELS = {
   groq: [
-    { v:'llama-3.3-70b-versatile', l:'Llama 3.3 70B — Recommended' },
+    { v:'',                        l:'Auto — best available' },
+    { v:'llama-3.3-70b-versatile', l:'Llama 3.3 70B' },
+    { v:'openai/gpt-oss-120b',     l:'GPT-OSS 120B' },
     { v:'llama-3.1-8b-instant',    l:'Llama 3.1 8B — Fast' },
-    { v:'mixtral-8x7b-32768',      l:'Mixtral 8x7B' },
   ],
   openai: [
     { v:'gpt-4o-mini', l:'GPT-4o Mini — Recommended' },
@@ -856,7 +857,6 @@ const STEPS = [
   { icon:'🚀', label:'Open pull request',   meta:'LLM — writing PR…' },
 ];
 
-const STEP_START_MS = [0, 1500, 4000, 8000, 15000, 20000, 26000, 30000, 40000];
 
 /* ── Theme ──────────────────────────────────────────────────────────────── */
 const root = document.documentElement;

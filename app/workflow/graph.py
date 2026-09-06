@@ -148,7 +148,9 @@ def build_graph(llm=None, github_token: str = "") -> StateGraph:
         logger.info("[NODE] generate_pr")
         if not state.get("patch_set"):
             logger.error("generate_pr: no patch_set — cannot create PR")
-            return {**state, "error": "No patch was generated or applied. Cannot create PR."}
+            # Preserve the original error (e.g. LLM error) rather than replacing it
+            original = state.get("error") or "No patch was generated or applied."
+            return {**state, "error": original}
         try:
             pre_pr_hook(state["patch_set"], state["test_result"], state["issue"].repository_path)
             pr_draft = pr_agent.generate_pr(
@@ -163,6 +165,15 @@ def build_graph(llm=None, github_token: str = "") -> StateGraph:
             return {**state, "error": str(e)}
 
     # ── Routing ───────────────────────────────────────────────────────────────
+
+    def halt_on_error(next_node: str):
+        """Stop the pipeline at the first failure so the real error survives."""
+        def route(state: AgentState) -> str:
+            if state.get("error"):
+                logger.warning("Halting pipeline — %s", state["error"])
+                return END
+            return next_node
+        return route
 
     def route_after_tests(state: AgentState) -> str:
         """After tests: go to PR if ok, retry only on actual test failures."""
@@ -195,9 +206,9 @@ def build_graph(llm=None, github_token: str = "") -> StateGraph:
 
     graph.set_entry_point("analyze_issue")
 
-    graph.add_edge("analyze_issue", "retrieve_context")
-    graph.add_edge("retrieve_context", "generate_fix")
-    graph.add_edge("generate_fix", "apply_patch")
+    graph.add_conditional_edges("analyze_issue", halt_on_error("retrieve_context"))
+    graph.add_conditional_edges("retrieve_context", halt_on_error("generate_fix"))
+    graph.add_conditional_edges("generate_fix", halt_on_error("apply_patch"))
     graph.add_edge("apply_patch", "run_tests")
     graph.add_conditional_edges("run_tests", route_after_tests)
     graph.add_edge("generate_pr", END)
