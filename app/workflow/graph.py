@@ -209,7 +209,7 @@ def build_graph(llm=None, github_token: str = "") -> StateGraph:
     graph.add_conditional_edges("analyze_issue", halt_on_error("retrieve_context"))
     graph.add_conditional_edges("retrieve_context", halt_on_error("generate_fix"))
     graph.add_conditional_edges("generate_fix", halt_on_error("apply_patch"))
-    graph.add_edge("apply_patch", "run_tests")
+    graph.add_conditional_edges("apply_patch", halt_on_error("run_tests"))
     graph.add_conditional_edges("run_tests", route_after_tests)
     graph.add_edge("generate_pr", END)
 

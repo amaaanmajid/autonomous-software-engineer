@@ -30,6 +30,12 @@ class PatchApplicator:
         repo_path = Path(repository_path)
         repo = git.Repo(repo_path)
 
+        self._ensure_identity(repo)
+
+        # Remember where we started so the abort path can get back — the default
+        # branch is not always "main".
+        base_branch = repo.active_branch.name
+
         # Create fix branch from current HEAD (usually main)
         branch_name = self._create_branch(repo, patch_set)
 
@@ -46,7 +52,7 @@ class PatchApplicator:
                 "No patches were applied (%d/%d skipped) — aborting commit to avoid empty PR",
                 skipped, len(patch_set.patches),
             )
-            repo.git.checkout("main")
+            repo.git.checkout(base_branch)
             repo.git.branch("-D", branch_name)
             raise ValueError(
                 f"All {len(patch_set.patches)} patch(es) were skipped — "
@@ -73,6 +79,17 @@ class PatchApplicator:
             branch_name=branch_name,
             patches_skipped=skipped,
         )
+
+    def _ensure_identity(self, repo: git.Repo) -> None:
+        """Give git an author for this clone.
+
+        Containers have no global git config, so `git commit` aborts with
+        "unable to auto-detect email address". Written at repository level —
+        the clone is a throwaway, and this never touches the host's config.
+        """
+        with repo.config_writer() as cw:
+            cw.set_value("user", "name", settings.git_author_name)
+            cw.set_value("user", "email", settings.git_author_email)
 
     def _push_branch(self, repo: git.Repo, branch_name: str) -> None:
         if not self._github_token:

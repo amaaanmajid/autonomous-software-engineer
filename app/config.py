@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     github_repo_owner: str = ""
     github_repo_name: str = ""
 
+    # Commit author for generated fixes. A container has no global git config,
+    # and `git commit` refuses to run without an identity.
+    git_author_name: str = "autonomous-software-engineer"
+    git_author_email: str = "bot@users.noreply.github.com"
+
     # Paths
     workspace_dir: Path = Path("/tmp/ase_workspace")
     faiss_index_path: Path = Path("./data/faiss_index")
